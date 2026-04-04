@@ -25,15 +25,32 @@ const Login = () => {
     navigate('/');
   };
 
-  const handleGoogleSuccess = (response) => {
-    login({
-      name: 'Syed Bilal',
-      email: 'bilal@paktrip.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
-      level: 'Elite Explorer',
-      bio: 'Exploring the hidden gems of Pakistan from Khyber to Karachi.'
-    });
-    navigate('/');
+  const decodeJWT = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleGoogleSuccess = (credentialResponse) => {
+    const payload = decodeJWT(credentialResponse.credential);
+    if (payload) {
+      login({
+        name: payload.name,
+        email: payload.email,
+        avatar: payload.picture,
+        level: 'Elite Explorer',
+        bio: 'Exploring the hidden gems of Pakistan.',
+        joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+      });
+      navigate('/');
+    }
   };
 
   return (

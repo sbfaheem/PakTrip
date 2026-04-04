@@ -54,24 +54,28 @@ export const TripProvider = ({ children }) => {
       const savedUser = localStorage.getItem('paktrip_user');
       return savedUser ? JSON.parse(savedUser) : {
         name: 'Guest Explorer',
+        email: 'explorer@paktrip.com',
         level: 'Newbie',
         bio: 'Ready to discover Pakistan!',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
         isAuthenticated: false
       };
     } catch (e) {
       return {
         name: 'Guest Explorer',
+        email: 'explorer@paktrip.com',
         level: 'Newbie',
         bio: 'Ready to discover Pakistan!',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
         isAuthenticated: false
       };
     }
   });
 
   useEffect(() => {
-    localStorage.setItem('paktrip_trips_v2', JSON.stringify(trips));
+    localStorage.setItem('paktrip_trips', JSON.stringify(trips));
   }, [trips]);
 
   useEffect(() => {
@@ -96,9 +100,11 @@ export const TripProvider = ({ children }) => {
   const logout = () => {
     setUser({
       name: 'Guest Explorer',
+      email: 'explorer@paktrip.com',
       level: 'Newbie',
       bio: 'Ready to discover Pakistan!',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+      joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
       isAuthenticated: false
     });
   };

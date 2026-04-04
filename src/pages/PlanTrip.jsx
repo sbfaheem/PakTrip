@@ -27,7 +27,9 @@ const PlanTrip = () => {
     duration: '6h 45m',
     summary: 'Karakoram Highway',
     origin: 'ISLAMABAD',
-    destination: 'NARAN'
+    destination: 'NARAN',
+    fuelNeed: 0,
+    estCost: 0
   });
   const [isCalculating, setIsCalculating] = useState(false);
   
@@ -117,12 +119,18 @@ const PlanTrip = () => {
         const totalDistance = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
         const totalDuration = result.routes[0].legs.reduce((acc, leg) => acc + leg.duration.value, 0);
 
+        const fuelLiters = (totalDistance / 1000) / 10; // 10km/L average
+        const tollEstimate = 500 + ((totalDistance/1000) * 1.5); // 500 base + 1.5/km
+        const fuelPrice = 280;
+
         setRouteData({
           distance: `${(totalDistance / 1000).toFixed(0)} km`,
           duration: `${Math.floor(totalDuration / 3600)}h ${Math.floor((totalDuration % 3600) / 60)}m`,
           summary: result.routes[0].summary || 'Main Route',
           origin: from.split(',')[0].toUpperCase(),
-          destination: to.split(',')[0].toUpperCase()
+          destination: to.split(',')[0].toUpperCase(),
+          fuelNeed: fuelLiters.toFixed(1),
+          estCost: Math.round((fuelLiters * fuelPrice) + tollEstimate)
         });
         setCurrentKm(0);
         setLastNotifiedMilestone(null);
@@ -178,12 +186,15 @@ const PlanTrip = () => {
            const coveredKm = distanceInMeters / 1000;
            setCurrentKm(coveredKm);
 
-           // Handle Milestones
-           const currentMilestone = milestones.find(m => 
-              coveredKm >= m.km && coveredKm <= m.km + 5 && m.name !== lastNotifiedMilestone
+           // Track next milestone distance
+           const nextMilestone = milestones.find(m => m.km > coveredKm);
+           const distToNext = nextMilestone ? Math.round(nextMilestone.km - coveredKm) : 0;
+
+           const currentMilestone = milestones.find(
+              m => coveredKm >= m.km && coveredKm <= m.km + 5 && m.name !== lastNotifiedMilestone
            );
            if (currentMilestone) {
-              setNotification({ message: `We have arrived ${currentMilestone.name}`, visible: true });
+              setNotification({ message: `We have arrived ${currentMilestone.name}`, visible: true, nextStop: nextMilestone ? { name: nextMilestone.name, dist: distToNext } : null });
               setLastNotifiedMilestone(currentMilestone.name);
               setTimeout(() => setNotification(curr => ({ ...curr, visible: false })), 4000);
            }
@@ -363,7 +374,7 @@ const PlanTrip = () => {
           </div>
         </div>
 
-        <div style={{ marginTop: '1.5rem', padding: '1.5rem', borderRadius: '2.5rem', background: isCalculating ? 'rgba(6, 95, 70, 0.02)' : 'rgba(6, 95, 70, 0.05)', border: '1px solid rgba(6, 95, 70, 0.1)', marginBottom: '1.5rem' }}>
+        <div style={{ marginTop: '1.5rem', padding: '1.5rem', borderRadius: '2.5rem', background: isCalculating ? 'rgba(6, 95, 70, 0.02)' : 'rgba(6, 95, 70, 0.05)', border: '1px solid rgba(6, 95, 70, 0.1)', marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Recommended Route</div>
@@ -372,6 +383,29 @@ const PlanTrip = () => {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#064e3b', marginBottom: '0.25rem' }}>{routeData.duration}</div>
               <div style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>{routeData.distance} total</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="card" style={{ flex: 1, padding: '1.25rem', borderRadius: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(5, 150, 105, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+               <Fuel size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Fuel Need</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>{routeData.fuelNeed} Liters</div>
+              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on crossover SUV</div>
+            </div>
+          </div>
+          <div className="card" style={{ flex: 1, padding: '1.25rem', borderRadius: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(3, 105, 161, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }}>
+               <TrendingUp size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Est. Cost</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>Rs. {routeData.estCost.toLocaleString()}</div>
+              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Fuel + Tolls included</div>
             </div>
           </div>
         </div>
@@ -422,21 +456,30 @@ const PlanTrip = () => {
         </div>
 
         <div className="card" style={{ padding: '1.5rem', borderRadius: '2.5rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                    <div style={{ fontSize: '1rem', fontWeight: 800 }}>{isLive ? 72 : 0}</div>
                    <div style={{ fontSize: '0.5rem', opacity: 0.8, marginLeft: '2px' }}>KM/H</div>
                 </div>
                 <div>
-                   <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-dark)' }}>{progressPercent >= 100 ? 'Arrived!' : (isLive ? 'Live Tracking Active' : 'Ready to start')}</div>
-                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>{notification.visible ? notification.message : (progressPercent > 80 && progressPercent < 100 ? `REACHING ${routeData.destination}` : 'ON TRIP')}</div>
+                   <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+                      {progressPercent >= 100 ? 'You have reached your destination!' : 'Cruising smoothly'}
+                   </div>
+                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>
+                      {progressPercent >= 100 ? 'TRIP COMPLETED' : `ON ${routeData.summary.toUpperCase()}`}
+                   </div>
                 </div>
              </div>
-             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Distance</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#065f46' }}>{currentKm.toFixed(1)} km</div>
-             </div>
+             
+             {isLive && progressPercent < 100 && (
+               <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>Next Stop</div>
+                  <div style={{ fontSize: '0.825rem', fontWeight: 800, color: '#059669' }}>
+                    {milestones.find(m => m.km > currentKm)?.name || routeData.destination} • {Math.max(0, Math.round((milestones.find(m => m.km > currentKm)?.km || (parseFloat(routeData.distance.replace(/[^0-9.]/g, '')))) - currentKm))}km
+                  </div>
+               </div>
+             )}
           </div>
           <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
             <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>

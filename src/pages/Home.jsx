@@ -87,6 +87,33 @@ const Home = () => {
         </div>
       </section>
 
+      <section style={{ marginBottom: '2.5rem' }}>
+        <motion.div 
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate('/splash')}
+          style={{ 
+            padding: '2rem', 
+            borderRadius: '2.5rem', 
+            background: 'linear-gradient(135deg, #065f46 0%, #064e3b 100%)', 
+            color: 'white', 
+            boxShadow: '0 20px 40px -1px rgba(6, 95, 70, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '150px', height: '150px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
+          <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>Start Your Next Adventure</div>
+          <p style={{ fontSize: '0.875rem', opacity: 0.9, lineHeight: 1.5, maxWidth: '200px' }}>Plan your route, add stops, and track your metrics in real-time.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}>
+             Let's Go <ChevronRight size={18} />
+          </div>
+        </motion.div>
+      </section>
+
       <section className="card" style={{ padding: '1.5rem', borderRadius: '2rem', background: '#f8fafc', border: '1px solid #f1f5f9', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '0.625rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Pro Explorer Tip</div>

@@ -41,25 +41,39 @@ const Profile = () => {
   const [editForm, setEditForm] = useState({ ...user });
   const stats = getStats();
 
+  const decodeJWT = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
   const handleSave = () => {
     updateUser(editForm);
     setIsEditing(false);
   };
 
   const handleGoogleSuccess = (credentialResponse) => {
-    // In a real app, you'd decode the JWT here.
-    // Simulating user data extraction:
-    const mockUserData = {
-      name: 'Syed Bilal',
-      email: 'bilal@paktrip.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
-      level: 'Elite Explorer',
-      bio: 'Exploring the hidden gems of Pakistan from Khyber to Karachi.'
-    };
-    login(mockUserData);
-    setEditForm(mockUserData);
+    const payload = decodeJWT(credentialResponse.credential);
+    if (payload) {
+      const googleUser = {
+        name: payload.name,
+        email: payload.email,
+        avatar: payload.picture,
+        level: user.level || 'Elite Explorer',
+        bio: user.bio || 'Exploring the hidden gems of Pakistan.',
+        joinedDate: user.joinedDate
+      };
+      login(googleUser);
+      setEditForm(googleUser);
+    }
   };
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -102,10 +116,17 @@ const Profile = () => {
               style={{ textAlign: 'center' }}
             >
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>{user.name}</h2>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem', maxWidth: '250px' }}>{user.bio}</p>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#ecfdf5', padding: '0.25rem 0.75rem', borderRadius: '2rem', border: '1px solid #10b98150' }}>
-                  <Shield size={12} color="var(--primary)" fill="var(--primary)" />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>{user.level}</span>
+              <div style={{ fontSize: '0.8125rem', color: '#94a3b8', fontWeight: 600, marginBottom: '0.75rem' }}>{user.email}</div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', maxWidth: '280px' }}>{user.bio}</p>
+              
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#ecfdf5', padding: '0.25rem 0.75rem', borderRadius: '2rem', border: '1px solid #10b98150' }}>
+                    <Shield size={12} color="var(--primary)" fill="var(--primary)" />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>{user.level}</span>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', background: '#f8fafc', padding: '0.25rem 0.75rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Member: {user.joinedDate}</span>
+                </div>
               </div>
             </motion.div>
           ) : (
@@ -125,8 +146,26 @@ const Profile = () => {
                   style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '0.925rem' }}
                 />
               </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', paddingLeft: '0.25rem' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  value={editForm.email} 
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '0.925rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', paddingLeft: '0.25rem' }}>Avatar URL</label>
+                <input 
+                  type="text" 
+                  value={editForm.avatar} 
+                  onChange={(e) => setEditForm(prev => ({ ...prev, avatar: e.target.value }))}
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '0.925rem' }}
+                />
+              </div>
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', paddingLeft: '0.25rem' }}>Travel Bio</label>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', paddingLeft: '0.25rem' }}>Travel Philosophy</label>
                 <textarea 
                   value={editForm.bio} 
                   onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
@@ -135,8 +174,14 @@ const Profile = () => {
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button 
+                  onClick={() => setIsEditing(false)}
+                  style={{ flex: 1, background: '#f3f4f6', color: '#4b5563', padding: '0.75rem', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
                   onClick={handleSave}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--primary)', color: 'white', padding: '0.75rem', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--primary)', color: 'white', padding: '0.75rem', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
                 >
                   <Save size={18} /> Save Profile
                 </button>
