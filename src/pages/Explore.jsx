@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Star, Calendar } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DestinationCard = ({ name, location, rating, image, price }) => (
   <motion.div 
