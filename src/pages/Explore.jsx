@@ -97,8 +97,19 @@ const Explore = () => {
   const handleCategoryClick = (cat) => {
     setActiveCategory(cat);
     setSelectedPlace(null);
-    fetchCategoryResults(cat);
+    if (cat === 'All') {
+      fetchCategoryResults('Famous tourist places');
+    } else {
+      fetchCategoryResults(cat);
+    }
   };
+
+  // Initial load
+  React.useEffect(() => {
+    if (isLoaded && activeCategory === 'All') {
+      fetchCategoryResults('Famous tourist places');
+    }
+  }, [isLoaded]);
 
   const onPlaceChanged = () => {
     if (autocomplete !== null) {
@@ -178,7 +189,7 @@ const Explore = () => {
       <AnimatePresence mode="popLayout">
         <section style={{ marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#064e3b', marginBottom: '1.25rem' }}>
-            {selectedPlace ? 'Top Match' : (activeCategory !== 'All' ? `${activeCategory} in Pakistan` : (searchQuery ? `Search results for "${searchQuery}"` : 'Popular Destinations'))}
+            {selectedPlace ? 'Top Match' : (activeCategory !== 'All' ? `${activeCategory} in Pakistan` : (searchQuery ? `Search results for "${searchQuery}"` : 'Discover Pakistan'))}
           </h2>
           {isSearching ? (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--primary)' }}>
@@ -195,15 +206,15 @@ const Explore = () => {
             </div>
           ) : categoryResults.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
-              {categoryResults.map(dest => (
+              {categoryResults.map((dest, idx) => (
                 <DestinationCard 
-                  key={dest.name + dest.location} 
+                  key={dest.name + idx} 
                   {...dest} 
                   onClick={() => navigate('/plan', { state: { destination: dest.name } })}
                 />
               ))}
             </div>
-          ) : filtered.length > 0 ? (
+          ) : filtered.length > 0 && activeCategory === 'None' ? (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               {filtered.map(dest => (
                 <DestinationCard 
