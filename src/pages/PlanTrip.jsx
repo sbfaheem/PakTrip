@@ -62,9 +62,9 @@ const PlanTrip = () => {
     
     // Format waypoints for Google Directions API
     const waypoints = stops
-      .filter(stop => stop.trim() !== '')
-      .map(stop => ({
-        location: stop,
+      .filter(s => s.address && s.address.trim() !== '')
+      .map(s => ({
+        location: s.address,
         stopover: true
       }));
 
@@ -232,22 +232,23 @@ const PlanTrip = () => {
   }, [isSimulating, isLive, decodedPath, routeData.distance, milestones, lastNotifiedMilestone]);
 
   const addStop = () => {
-    setStops([...stops, '']);
+    setStops([...stops, { id: Math.random().toString(36).substr(2, 9), address: '' }]);
   };
 
-  const removeStop = (index) => {
-    const newStops = [...stops];
-    newStops.splice(index, 1);
-    setStops(newStops);
+  const removeStop = (id) => {
+    setStops(stops.filter(s => s.id !== id));
   };
 
-  const onStopChanged = (index) => {
-    const autocomplete = stopRefs.current[index];
-    if (autocomplete !== null) {
+  const onStopChanged = (id) => {
+    const index = stops.findIndex(s => s.id === id);
+    if (index === -1) return;
+    
+    const autocomplete = stopRefs.current[id];
+    if (autocomplete) {
       const place = autocomplete.getPlace();
       if (place.formatted_address) {
         const newStops = [...stops];
-        newStops[index] = place.formatted_address;
+        newStops[index] = { ...newStops[index], address: place.formatted_address };
         setStops(newStops);
       }
     }
@@ -331,11 +332,13 @@ const PlanTrip = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '3px solid #059669', background: 'white', zIndex: 1 }} />
               <div style={{ flex: 1 }}>
-                <Autocomplete onLoad={ref => fromAutocompleteRef.current = ref} onPlaceChanged={onFromPlaceChanged}>
-                  <input type="text" value={from} onChange={e => setFrom(e.target.value)} placeholder="Origin"
-                    style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
-                  />
-                </Autocomplete>
+                {isLoaded && (
+                  <Autocomplete onLoad={ref => fromAutocompleteRef.current = ref} onPlaceChanged={onFromPlaceChanged}>
+                    <input type="text" value={from} onChange={e => setFrom(e.target.value)} placeholder="Origin"
+                      style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                    />
+                  </Autocomplete>
+                )}
               </div>
             </div>
 
@@ -345,16 +348,18 @@ const PlanTrip = () => {
                 <motion.div key={stop.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.8 }} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ width: '22px', height: '22px', border: '3px solid #94a3b8', borderRadius: '50%', background: 'white', zIndex: 1 }} />
                   <div style={{ flex: 1, position: 'relative' }}>
-                    <Autocomplete onLoad={ref => stopRefs.current[stop.id] = ref} onPlaceChanged={() => onStopChanged(stop.id)}>
-                      <input type="text" value={stop.address} onChange={e => {
-                        const newStops = [...stops];
-                        const idx = newStops.findIndex(s => s.id === stop.id);
-                        newStops[idx].address = e.target.value;
-                        setStops(newStops);
-                      }} placeholder="Intermediate Stop"
-                        style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#fffbeb', border: '1px solid #fef3c7', fontSize: '0.925rem', fontWeight: 600 }}
-                      />
-                    </Autocomplete>
+                    {isLoaded && (
+                      <Autocomplete onLoad={ref => stopRefs.current[stop.id] = ref} onPlaceChanged={() => onStopChanged(stop.id)}>
+                        <input type="text" value={stop.address} onChange={e => {
+                          const newStops = [...stops];
+                          const idx = newStops.findIndex(s => s.id === stop.id);
+                          newStops[idx].address = e.target.value;
+                          setStops(newStops);
+                        }} placeholder="Intermediate Stop"
+                          style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#fffbeb', border: '1px solid #fef3c7', fontSize: '0.925rem', fontWeight: 600 }}
+                        />
+                      </Autocomplete>
+                    )}
                     <Trash2 size={16} color="#ef4444" onClick={() => removeStop(stop.id)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 10 }} />
                   </div>
                 </motion.div>
@@ -365,11 +370,13 @@ const PlanTrip = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '22px', height: '22px', background: '#0284c7', borderRadius: '4px', zIndex: 1 }} />
               <div style={{ flex: 1 }}>
-                <Autocomplete onLoad={ref => toAutocompleteRef.current = ref} onPlaceChanged={onToPlaceChanged}>
-                  <input type="text" value={to} onChange={e => setTo(e.target.value)} placeholder="Destination"
-                    style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
-                  />
-                </Autocomplete>
+                {isLoaded && (
+                  <Autocomplete onLoad={ref => toAutocompleteRef.current = ref} onPlaceChanged={onToPlaceChanged}>
+                    <input type="text" value={to} onChange={e => setTo(e.target.value)} placeholder="Destination"
+                      style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                    />
+                  </Autocomplete>
+                )}
               </div>
             </div>
 
