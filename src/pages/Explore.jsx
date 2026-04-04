@@ -7,37 +7,48 @@ import { Loader2 } from 'lucide-react';
 
 const libraries = ['places'];
 
-const DestinationCard = ({ name, location, rating, image, price, onClick }) => (
-  <motion.div 
-    whileHover={{ y: -5 }}
-    whileTap={{ scale: 0.98 }}
-    className="card" 
-    style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem', cursor: 'pointer' }}
-    onClick={onClick}
-  >
-    <div style={{ height: '180px', position: 'relative' }}>
-      <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div style={{ 
-        position: 'absolute', top: '12px', right: '12px', 
-        background: 'rgba(255,255,255,0.95)', padding: '0.4rem 0.6rem', 
-        borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.35rem', 
-        fontSize: '0.75rem', fontWeight: 700, backdropFilter: 'blur(4px)',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
-      }}>
-        <Star size={12} fill="#fbbf24" color="#fbbf24" /> {rating}
+const DestinationCard = ({ name, location, rating, image, price, onClick }) => {
+  const [imgError, setImgError] = React.useState(false);
+  const fallbackImg = "https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop";
+
+  return (
+    <motion.div 
+      whileHover={{ y: -5 }}
+      whileTap={{ scale: 0.98 }}
+      className="card" 
+      style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem', cursor: 'pointer' }}
+      onClick={onClick}
+    >
+      <div style={{ height: '180px', position: 'relative', background: '#f1f5f9' }}>
+        <img 
+          src={imgError ? fallbackImg : image} 
+          alt={name} 
+          onError={() => setImgError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        />
+        <div style={{ 
+          position: 'absolute', top: '12px', right: '12px', 
+          background: 'rgba(255,255,255,0.95)', padding: '0.4rem 0.6rem', 
+          borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.35rem', 
+          fontSize: '0.75rem', fontWeight: 700, backdropFilter: 'blur(4px)',
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+          zIndex: 5
+        }}>
+          <Star size={12} fill="#fbbf24" color="#fbbf24" /> {rating}
+        </div>
       </div>
-    </div>
-    <div style={{ padding: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#064e3b' }}>{name}</h3>
-        <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem' }}>PKR {price}</span>
+      <div style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#064e3b' }}>{name}</h3>
+          <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem' }}>PKR {price}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>
+          <MapPin size={14} /> {location}
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>
-        <MapPin size={14} /> {location}
-      </div>
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 const Explore = () => {
   const navigate = useNavigate();
@@ -51,7 +62,44 @@ const Explore = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [autocomplete, setAutocomplete] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [categoryResults, setCategoryResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   
+  const fetchCategoryResults = (category) => {
+    if (!isLoaded || category === 'All') {
+      setCategoryResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    const request = {
+      query: `${category} in Pakistan`,
+      fields: ['name', 'formatted_address', 'rating', 'photos'],
+    };
+
+    service.textSearch(request, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+        const parsed = results.map(place => ({
+          name: place.name,
+          location: place.formatted_address,
+          rating: place.rating || '4.5',
+          price: '5,000+',
+          cat: category,
+          image: place.photos ? place.photos[0].getUrl({ maxWidth: 800 }) : 'https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop'
+        }));
+        setCategoryResults(parsed.slice(0, 12));
+      }
+      setIsSearching(false);
+    });
+  };
+
+  const handleCategoryClick = (cat) => {
+    setActiveCategory(cat);
+    setSelectedPlace(null);
+    fetchCategoryResults(cat);
+  };
+
   const onPlaceChanged = () => {
     if (autocomplete !== null) {
       const place = autocomplete.getPlace();
@@ -62,13 +110,14 @@ const Explore = () => {
           rating: place.rating || '4.5',
           price: '8,000+', // Estimated base
           cat: 'Explore',
-          image: place.photos ? place.photos[0].getUrl({ maxWidth: 800 }) : 'https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop'
+          image: place.photos ? place.photos[0].getUrl({ maxWidth: 1200 }) : 'https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop'
         });
+        setActiveCategory('All');
       }
     }
   };
   
-  const categories = ['All', 'Mountains', 'Beaches', 'Culture', 'Adventure'];
+  const categories = ['All', 'Mountains', 'Beaches', 'Desert', 'Culture', 'Hotels', 'Adventure'];
 
   const destinations = [
     { name: "Hunza Valley", location: "Gilgit-Baltistan", rating: "4.9", price: "25,000", cat: "Mountains", image: "https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop" },
@@ -118,7 +167,7 @@ const Explore = () => {
           <button 
             key={cat}
             className={`chip ${activeCategory === cat ? 'active' : ''}`}
-            onClick={() => setActiveCategory(cat)}
+            onClick={() => handleCategoryClick(cat)}
             style={{ padding: '0.6rem 1.25rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: '2rem', cursor: 'pointer', transition: 'all 0.3s', whiteSpace: 'nowrap' }}
           >
             {cat}
@@ -129,15 +178,30 @@ const Explore = () => {
       <AnimatePresence mode="popLayout">
         <section style={{ marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#064e3b', marginBottom: '1.25rem' }}>
-            {selectedPlace ? 'Top Match' : (searchQuery ? `Search results for "${searchQuery}"` : 'Popular Destinations')}
+            {selectedPlace ? 'Top Match' : (activeCategory !== 'All' ? `${activeCategory} in Pakistan` : (searchQuery ? `Search results for "${searchQuery}"` : 'Popular Destinations'))}
           </h2>
-          {selectedPlace ? (
+          {isSearching ? (
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--primary)' }}>
+               <Loader2 size={48} className="animate-spin" style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
+               <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Sourcing Top {activeCategory} Experiences...</p>
+            </div>
+          ) : selectedPlace ? (
             <div style={{ marginBottom: '2rem' }}>
                <DestinationCard 
                  {...selectedPlace} 
                  onClick={() => navigate('/plan', { state: { destination: selectedPlace.name } })}
                />
                <button onClick={() => setSelectedPlace(null)} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', border: 'none', background: 'none', padding: 0 }}>Clear Results</button>
+            </div>
+          ) : categoryResults.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              {categoryResults.map(dest => (
+                <DestinationCard 
+                  key={dest.name + dest.location} 
+                  {...dest} 
+                  onClick={() => navigate('/plan', { state: { destination: dest.name } })}
+                />
+              ))}
             </div>
           ) : filtered.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
