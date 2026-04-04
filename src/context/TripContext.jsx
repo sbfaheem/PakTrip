@@ -103,9 +103,11 @@ export const TripProvider = ({ children }) => {
       email: 'explorer@paktrip.com',
       level: 'Newbie',
       bio: 'Ready to discover Pakistan!',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+      avatar: '/avatar.png',
       joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-      isAuthenticated: false
+      isAuthenticated: false,
+      journeyHistory: [],
+      regionsVisited: []
     });
   };
 
@@ -113,21 +115,47 @@ export const TripProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...newUserData }));
   };
 
+  const completeTrip = (tripData) => {
+    setUser(prev => {
+      const distanceNum = parseFloat(tripData.distance.replace(/[^0-9.]/g, '')) || 0;
+      
+      // Determine region from address
+      const provinces = ['Sindh', 'Punjab', 'Khyber Pakhtunkhwa', 'KPK', 'Balochistan', 'Gilgit-Baltistan', 'Azad Kashmir'];
+      const text = (tripData.destination + ' ' + tripData.summary).toLowerCase();
+      const detectedRegion = provinces.find(p => text.includes(p.toLowerCase())) || 'Unknown';
+
+      const newHistory = [...(prev.journeyHistory || []), {
+        ...tripData,
+        id: Date.now().toString(),
+        completedAt: new Date().toISOString(),
+        distanceNum,
+        region: detectedRegion
+      }];
+
+      const newRegions = [...new Set([...(prev.regionsVisited || []), detectedRegion])].filter(r => r !== 'Unknown');
+
+      return {
+        ...prev,
+        journeyHistory: newHistory,
+        regionsVisited: newRegions
+      };
+    });
+  };
+
   const getStats = () => {
-    const totalDistance = trips.reduce((acc, t) => acc + (t.distance || 0), 0);
-    const fuelSaved = Math.round(totalDistance * 0.034); // Pseudo-calc
-    const regions = new Set(trips.map(t => t.region)).size;
+    const history = user.journeyHistory || [];
+    const totalDistance = history.reduce((acc, t) => acc + (t.distanceNum || 0), 0);
+    const regions = (user.regionsVisited || []).length;
     
     return {
       totalDistance: totalDistance.toLocaleString(),
-      fuelSaved,
       regions,
-      totalTrips: trips.length
+      totalTrips: history.length
     };
   };
 
   return (
-    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats }}>
+    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats, completeTrip }}>
       {children}
     </TripContext.Provider>
   );

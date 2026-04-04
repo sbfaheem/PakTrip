@@ -44,6 +44,8 @@ const PlanTrip = () => {
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [notification, setNotification] = useState({ message: '', visible: false });
   const [lastNotifiedMilestone, setLastNotifiedMilestone] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [tripSummaryData, setTripSummaryData] = useState(null);
   
   const fromAutocompleteRef = useRef(null);
   const toAutocompleteRef = useRef(null);
@@ -251,6 +253,32 @@ const PlanTrip = () => {
     }
   };
 
+  const finishTrip = () => {
+    const totalDist = parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) || 0;
+    const summary = {
+      ...routeData,
+      date: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      stops: stops.length,
+      activities: [
+        { name: 'Trip Started', time: 'Initial' },
+        ...stops.map((s, i) => ({ name: `Stop: ${s.address.split(',')[0]}`, time: 'Visit' })),
+        { name: 'Destination Arrival', time: new Date().toLocaleTimeString() }
+      ]
+    };
+    
+    // Add Meal logic
+    const hour = new Date().getHours();
+    if (hour >= 12 && hour <= 15) summary.activities.push({ name: 'Lunch break taken', time: '1:30 PM' });
+    if (hour >= 19 && hour <= 22) summary.activities.push({ name: 'Dinner break taken', time: '8:45 PM' });
+    
+    setTripSummaryData(summary);
+    setShowSummary(true);
+    completeTrip(summary);
+    setIsLive(false);
+    if(watchId.current) navigator.geolocation.clearWatch(watchId.current);
+  };
+
   const onFromPlaceChanged = () => {
     if (fromAutocompleteRef.current !== null) {
       const place = fromAutocompleteRef.current.getPlace();
@@ -452,6 +480,28 @@ const PlanTrip = () => {
               {isLive ? <Pause size={24} /> : <LocateFixed size={24} />}
               {isLive ? 'Stop Tracking' : 'Start Live Trip'}
            </button>
+           {progressPercent >= 100 && (
+             <button 
+               onClick={finishTrip}
+               style={{ 
+                 flex: 1, 
+                 height: '56px', 
+                 borderRadius: '1.25rem', 
+                 background: 'linear-gradient(135deg, #059669, #065f46)', 
+                 color: 'white', 
+                 border: 'none', 
+                 fontWeight: 800, 
+                 display: 'flex', 
+                 alignItems: 'center', 
+                 justifyContent: 'center', 
+                 gap: '0.75rem',
+                 boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.4)',
+                 fontSize: '1.15rem'
+               }}
+             >
+                🏆 Finish Trip
+             </button>
+           )}
            <button 
              onClick={() => { 
                setCurrentKm(0); 
@@ -512,6 +562,67 @@ const PlanTrip = () => {
           </div>
         </div>
       </div>
+
+       {/* Trip Summary Modal (Email Mock) */}
+       <AnimatePresence>
+         {showSummary && (
+           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+           >
+             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+               style={{ background: 'white', width: '100%', maxWidth: '450px', borderRadius: '2.5rem', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
+             >
+               <div style={{ background: 'var(--primary)', padding: '2rem 1.5rem', color: 'white', textAlign: 'center' }}>
+                 <CheckCircle2 size={48} style={{ marginBottom: '1rem' }} />
+                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>Trip Summary</h2>
+                 <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>Report sent to {user.email}</p>
+               </div>
+               <div style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px dashed #e2e8f0', paddingBottom: '1rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Date</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{tripSummaryData?.date}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Time</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{tripSummaryData?.time}</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ flex: 1, padding: '1rem', background: '#f8fafc', borderRadius: '1.25rem' }}>
+                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 800 }}>DISTANCE</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 800 }}>{tripSummaryData?.distance}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '1rem', background: '#f8fafc', borderRadius: '1.25rem' }}>
+                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 800 }}>TOTAL COST</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 800 }}>Rs. {tripSummaryData?.estCost}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#064e3b', marginBottom: '0.75rem' }}>Activity Timeline</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {tripSummaryData?.activities.map((act, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 600 }}>{act.name}</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>{act.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => { setShowSummary(false); navigate('/profile'); }}
+                    style={{ width: '100%', padding: '1rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '1.25rem', fontWeight: 800, fontSize: '1rem', cursor: 'pointer' }}
+                  >
+                    View Overall Profile
+                  </button>
+               </div>
+             </motion.div>
+           </motion.div>
+         )}
+       </AnimatePresence>
     </motion.div>
   );
 };

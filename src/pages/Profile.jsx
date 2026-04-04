@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, Map, Settings, LogOut, ChevronRight, Edit2, Shield, Save, X, Camera, Mail } from 'lucide-react';
+import { Award, Map, Settings, LogOut, ChevronRight, Edit2, Shield, Save, X, Camera, Mail, Navigation, Flag, Compass, Ghost } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
 import { useTrips } from '../context/TripContext';
@@ -216,12 +216,16 @@ const Profile = () => {
         <StatBox label="Regions" value={stats.regions} />
       </div>
 
-      {/* Badges section remains similar */}
+      {/* Badges section */}
       <section style={{ marginBottom: '2.5rem', padding: '0 1rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--text-dark)' }}>Personal Badges</h3>
         <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none' }}>
-            <AchievementBadge icon={Award} name="Northern Nomad" color="#3b82f6" />
-            <AchievementBadge icon={Map} name="Gilgit Guru" color="#ec4899" />
+            <AchievementBadge icon={Compass} name="Southern Scout" color="#f59e0b" />
+            {(user.regionsVisited || []).includes('Sindh') && <AchievementBadge icon={Flag} name="Sindh Hero" color="#10b981" />}
+            {(user.regionsVisited || []).includes('Punjab') && <AchievementBadge icon={Award} name="Punjab Rover" color="#3b82f6" />}
+            {(user.regionsVisited || []).includes('KPK') || (user.regionsVisited || []).includes('Khyber Pakhtunkhwa') ? <AchievementBadge icon={Map} name="KPK Knight" color="#ec4899" /> : null}
+            {(user.regionsVisited || []).includes('Gilgit-Baltistan') && <AchievementBadge icon={Navigation} name="GB Guru" color="#8b5cf6" />}
+            {(user.regionsVisited || []).includes('Balochistan') && <AchievementBadge icon={Ghost} name="Baloch Nomad" color="#6366f1" />}
             <AchievementBadge icon={Shield} name="Safety Expert" color="#10b981" />
             <AchievementBadge icon={Award} name="Kilometer King" color="#f59e0b" />
         </div>
@@ -229,7 +233,7 @@ const Profile = () => {
 
       {/* Settings Section */}
       <section style={{ padding: '0 1rem' }}>
-        <SettingItem icon={Mail} label="Email Address" />
+        <SettingItem icon={Mail} label="Edit Email Address" onClick={() => setIsEditing(true)} />
         <SettingItem icon={Settings} label="Preferences" />
         <SettingItem icon={Shield} label="Account Security" />
         {user.isAuthenticated && (
