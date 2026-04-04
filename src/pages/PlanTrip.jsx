@@ -150,7 +150,13 @@ const PlanTrip = () => {
   };
 
   useEffect(() => {
-    if (isLoaded && from && to) {
+    // If arriving from Explore/Home with a pre-selected destination
+    if (location.state?.destination) {
+      setTo(location.state.destination);
+      // Optional: auto-trigger search if you have a way to get coords from name
+    }
+
+    if (activeTrip && activeTrip.status === 'In Progress') {
       const timer = setTimeout(() => {
         calculateRoute();
       }, 500); 

@@ -6,11 +6,13 @@ import { Loader2 } from 'lucide-react';
 
 const libraries = ['places'];
 
-const DestinationCard = ({ name, location, rating, image, price }) => (
+const DestinationCard = ({ name, location, rating, image, price, onClick }) => (
   <motion.div 
     whileHover={{ y: -5 }}
+    whileTap={{ scale: 0.98 }}
     className="card" 
     style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem', cursor: 'pointer' }}
+    onClick={onClick}
   >
     <div style={{ height: '180px', position: 'relative' }}>
       <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -37,6 +39,7 @@ const DestinationCard = ({ name, location, rating, image, price }) => (
 );
 
 const Explore = () => {
+  const navigate = useNavigate();
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -129,13 +132,20 @@ const Explore = () => {
           </h2>
           {selectedPlace ? (
             <div style={{ marginBottom: '2rem' }}>
-               <DestinationCard {...selectedPlace} />
+               <DestinationCard 
+                 {...selectedPlace} 
+                 onClick={() => navigate('/plan', { state: { destination: selectedPlace.name } })}
+               />
                <button onClick={() => setSelectedPlace(null)} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', border: 'none', background: 'none', padding: 0 }}>Clear Results</button>
             </div>
           ) : filtered.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               {filtered.map(dest => (
-                <DestinationCard key={dest.name} {...dest} />
+                <DestinationCard 
+                  key={dest.name} 
+                  {...dest} 
+                  onClick={() => navigate('/plan', { state: { destination: dest.name } })}
+                />
               ))}
             </div>
           ) : (
