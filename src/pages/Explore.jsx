@@ -39,11 +39,11 @@ const Explore = () => {
   const categories = ['All', 'Mountains', 'Beaches', 'Culture', 'Adventure'];
 
   const destinations = [
-    { name: "Hunza Valley", location: "Gilgit-Baltistan", rating: "4.9", price: "25,000", cat: "Mountains", image: "https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?q=80&w=400&auto=format&fit=crop" },
-    { name: "Skardu Desert", location: "Gilgit-Baltistan", rating: "4.8", price: "32,000", cat: "Adventure", image: "https://images.unsplash.com/photo-1548062005-e50d0639138c?q=80&w=400&auto=format&fit=crop" },
-    { name: "Kund Malir", location: "Balochistan", rating: "4.7", price: "12,000", cat: "Beaches", image: "https://images.unsplash.com/photo-1599661046289-e31887846eac?q=80&w=400&auto=format&fit=crop" },
-    { name: "Naran Valley", location: "KPK", rating: "4.6", price: "18,000", cat: "Mountains", image: "https://images.unsplash.com/photo-1627548633724-99bc62c93883?q=80&w=400&auto=format&fit=crop" },
-    { name: "Mohenjo-daro", location: "Sindh", rating: "4.5", price: "8,500", cat: "Culture", image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=400&auto=format&fit=crop" }
+    { name: "Hunza Valley", location: "Gilgit-Baltistan", rating: "4.9", price: "25,000", cat: "Mountains", image: "https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop" },
+    { name: "Skardu Desert", location: "Gilgit-Baltistan", rating: "4.8", price: "32,000", cat: "Adventure", image: "https://images.unsplash.com/photo-1627915570116-654cb249e755?q=80&w=800&auto=format&fit=crop" },
+    { name: "Kund Malir", location: "Balochistan", rating: "4.7", price: "12,000", cat: "Beaches", image: "https://images.unsplash.com/photo-1621245084196-1ab4cd40f5a5?q=80&w=800&auto=format&fit=crop" },
+    { name: "Naran Valley", location: "KPK", rating: "4.6", price: "18,000", cat: "Mountains", image: "https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?q=80&w=800&auto=format&fit=crop" },
+    { name: "Mohenjo-daro", location: "Sindh", rating: "4.5", price: "8,500", cat: "Culture", image: "https://images.unsplash.com/photo-1517332219460-6cc447a1f9e2?q=80&w=800&auto=format&fit=crop" }
   ];
 
   const filtered = destinations.filter(d => 
