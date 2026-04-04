@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Navigation, Clock, TrendingUp, Fuel, Plus, X, ChevronRight, Bell, Layers, Activity, Loader2, Play, Pause, RotateCcw, CheckCircle2, Trash2, LocateFixed } from 'lucide-react';
 import { Autocomplete, useJsApiLoader, GoogleMap, DirectionsRenderer, Marker } from '@react-google-maps/api';
 import { useTrips } from '../context/TripContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const libraries = ['places', 'geometry'];
 
@@ -53,6 +53,7 @@ const PlanTrip = () => {
   const watchId = useRef(null); // Ref for geolocation watch ID
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useTrips() || { user: {} };
 
   const { isLoaded, loadError } = useJsApiLoader({

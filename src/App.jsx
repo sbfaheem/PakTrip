@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Home as HomeIcon, Compass, Backpack, User as UserIcon, Activity, Plus, Search, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Home from './pages/Home';
@@ -17,14 +17,15 @@ function PrivateRoute({ children }) {
 }
 
 function Layout({ children }) {
+  const navigate = useNavigate();
   const location = useLocation();
-  const { trips } = useTrips();
+  const { trips, user } = useTrips() || { trips: [], user: {} };
   const hasInProgress = trips.some(t => t.status === 'In Progress');
 
   const navItems = [
     { path: '/explore', icon: Compass, label: 'Explore' },
     { path: '/trips', icon: Backpack, label: 'Trips' },
-    { path: '/splash', icon: Plus, label: 'Plan', isAction: true },
+    { path: '/plan', icon: Plus, label: 'Plan My Trip', isAction: true },
     { path: '/profile', icon: UserIcon, label: 'Profile' },
   ];
 
@@ -60,23 +61,40 @@ function Layout({ children }) {
         }}>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            return item.isAction ? (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '64px', height: '64px', borderRadius: '50%',
-                  background: '#dcfce7',
-                  color: 'var(--primary)',
-                  boxShadow: '0 0 0 4px white, 0 12px 24px -4px rgba(6, 95, 70, 0.3)',
-                  border: '2px dashed #059669',
-                  marginTop: '-40px', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-              >
-                <Plus size={32} />
-              </Link>
-            ) : (
+            if (item.isAction) {
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: '4px', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    flex: 1
+                  }}
+                >
+                  <div style={{
+                    width: '56px', height: '56px', borderRadius: '50%',
+                    background: '#dcfce7',
+                    color: 'var(--primary)',
+                    boxShadow: '0 0 0 4px white, 0 12px 24px -4px rgba(6, 95, 70, 0.3)',
+                    border: '2.5px solid #059669',
+                    marginTop: '-32px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Plus size={28} />
+                  </div>
+                  <span style={{ 
+                    fontSize: '0.625rem', 
+                    fontWeight: 900, 
+                    color: 'var(--primary)', 
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                    width: 'max-content'
+                  }}>{item.label}</span>
+                </Link>
+              );
+            }
+            return (
               <Link
                 key={item.path}
                 to={item.path}
