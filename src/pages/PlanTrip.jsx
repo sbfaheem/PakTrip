@@ -36,11 +36,12 @@ const PlanTrip = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   
   // Progress & Tracking State
-  const [currentKm, setCurrentKm] = useState(0);
   const [isLive, setIsLive] = useState(false); // Live tracking mode
   const [decodedPath, setDecodedPath] = useState([]);
-  const [currentLocation, setCurrentLocation] = useState(defaultCenter);
   const [milestones, setMilestones] = useState([]);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [currentKm, setCurrentKm] = useState(0);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
   const [notification, setNotification] = useState({ message: '', visible: false });
   const [lastNotifiedMilestone, setLastNotifiedMilestone] = useState(null);
   
@@ -172,9 +173,16 @@ const PlanTrip = () => {
     
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, speed } = position.coords;
         const newPos = { lat: latitude, lng: longitude };
         setCurrentLocation(newPos);
+        
+        // Update speed (convert m/s to km/h)
+        if (speed !== null && speed !== undefined) {
+          setCurrentSpeed(Math.round(speed * 3.6));
+        } else {
+          setCurrentSpeed(0);
+        }
         
         // Calculate progress based on nearest point in decodedPath
         if (decodedPath.length > 0 && window.google) {
@@ -471,7 +479,7 @@ const PlanTrip = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{isLive ? 72 : 0}</div>
+                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{isLive ? currentSpeed : 0}</div>
                    <div style={{ fontSize: '0.5rem', opacity: 0.8, marginLeft: '2px' }}>KM/H</div>
                 </div>
                 <div>
