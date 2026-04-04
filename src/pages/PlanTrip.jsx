@@ -316,13 +316,16 @@ const PlanTrip = () => {
             {/* Origin */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '3px solid #059669', background: 'white', zIndex: 1 }} />
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
                 {isLoaded && (
                   <Autocomplete onLoad={ref => fromAutocompleteRef.current = ref} onPlaceChanged={onFromPlaceChanged}>
                     <input type="text" value={from} onChange={e => setFrom(e.target.value)} placeholder="Origin"
-                      style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                      style={{ width: '100%', padding: '0.875rem 2.5rem 0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
                     />
                   </Autocomplete>
+                )}
+                {from && (
+                  <X size={16} color="#94a3b8" onClick={() => setFrom('')} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 10 }} />
                 )}
               </div>
             </div>
@@ -354,13 +357,16 @@ const PlanTrip = () => {
             {/* Destination */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '22px', height: '22px', background: '#0284c7', borderRadius: '4px', zIndex: 1 }} />
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
                 {isLoaded && (
                   <Autocomplete onLoad={ref => toAutocompleteRef.current = ref} onPlaceChanged={onToPlaceChanged}>
                     <input type="text" value={to} onChange={e => setTo(e.target.value)} placeholder="Destination"
-                      style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                      style={{ width: '100%', padding: '0.875rem 2.5rem 0.875rem 1rem', borderRadius: '1.25rem', background: '#f0fdf4', border: '1px solid #dcfce7', fontSize: '0.925rem', fontWeight: 600 }}
                     />
                   </Autocomplete>
+                )}
+                {to && (
+                  <X size={16} color="#94a3b8" onClick={() => setTo('')} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', zIndex: 10 }} />
                 )}
               </div>
             </div>
