@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
