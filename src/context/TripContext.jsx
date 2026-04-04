@@ -57,7 +57,7 @@ export const TripProvider = ({ children }) => {
         email: 'explorer@paktrip.com',
         level: 'Newbie',
         bio: 'Ready to discover Pakistan!',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        avatar: '/avatar.png',
         joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
         isAuthenticated: false
       };
@@ -67,7 +67,7 @@ export const TripProvider = ({ children }) => {
         email: 'explorer@paktrip.com',
         level: 'Newbie',
         bio: 'Ready to discover Pakistan!',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        avatar: '/avatar.png',
         joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
         isAuthenticated: false
       };
