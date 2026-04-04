@@ -39,7 +39,7 @@ const PlanTrip = () => {
   const [isLive, setIsLive] = useState(false); // Live tracking mode
   const [decodedPath, setDecodedPath] = useState([]);
   const [milestones, setMilestones] = useState([]);
-  const [currentLocation, setCurrentLocation] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(defaultCenter);
   const [currentKm, setCurrentKm] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [notification, setNotification] = useState({ message: '', visible: false });
