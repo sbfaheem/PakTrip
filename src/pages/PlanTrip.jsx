@@ -31,9 +31,8 @@ const PlanTrip = () => {
   });
   const [isCalculating, setIsCalculating] = useState(false);
   
-  // Progress & Simulation State
+  // Progress & Tracking State
   const [currentKm, setCurrentKm] = useState(0);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [isLive, setIsLive] = useState(false); // Live tracking mode
   const [decodedPath, setDecodedPath] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(defaultCenter);
@@ -91,13 +90,20 @@ const PlanTrip = () => {
         const foundMilestones = [];
         let accumulatedDistance = 0;
         
+        const roadTerms = ['Rd', 'Road', 'Highway', 'Hwy', 'M-', 'N-', 'Bypass', 'Interchange', 'Exit', 'Merge', 'Turn', 'Lane', 'Way', 'Bridge', 'Flyover'];
+        
         result.routes[0].legs.forEach((leg) => {
           leg.steps.forEach((step) => {
             accumulatedDistance += step.distance.value / 1000;
             const match = step.instructions.match(/<b>(.*?)<\/b>/g);
             if (match && match.length > 0) {
               const cityName = match[match.length - 1].replace(/<\/?b>/g, '');
-              if (cityName.length > 3 && !cityName.includes('Merge') && !cityName.includes('Exit')) {
+              
+              // Filter out road names, numbers, and navigation commands
+              const isRoad = roadTerms.some(term => cityName.toLowerCase().includes(term.toLowerCase()));
+              const isNumber = /^\d+/.test(cityName); // e.g. "1st exit"
+              
+              if (cityName.length > 3 && !isRoad && !isNumber) {
                 foundMilestones.push({ km: accumulatedDistance, name: cityName });
               }
             }
@@ -142,7 +148,6 @@ const PlanTrip = () => {
     if (isLive) {
       if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
       setIsLive(false);
-      setIsSimulating(false);
       return;
     }
 
@@ -152,7 +157,6 @@ const PlanTrip = () => {
     }
 
     setIsLive(true);
-    setIsSimulating(false);
     
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -179,7 +183,7 @@ const PlanTrip = () => {
               coveredKm >= m.km && coveredKm <= m.km + 5 && m.name !== lastNotifiedMilestone
            );
            if (currentMilestone) {
-              setNotification({ message: `We are crossing ${currentMilestone.name}`, visible: true });
+              setNotification({ message: `We have arrived ${currentMilestone.name}`, visible: true });
               setLastNotifiedMilestone(currentMilestone.name);
               setTimeout(() => setNotification(curr => ({ ...curr, visible: false })), 4000);
            }
@@ -200,36 +204,6 @@ const PlanTrip = () => {
       if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
     };
   }, []);
-
-  // Simulation Logic (Fallback/Manual)
-  useEffect(() => {
-    let interval;
-    if (isSimulating && !isLive && decodedPath.length > 0) {
-      interval = setInterval(() => {
-        const totalKm = parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) || 100;
-        setCurrentKm(prev => {
-          const nextKm = prev + (totalKm / 150);
-          if (nextKm >= totalKm) {
-            setIsSimulating(false);
-            return totalKm;
-          }
-          const progressRatio = nextKm / totalKm;
-          const pathIndex = Math.floor(progressRatio * decodedPath.length);
-          if (decodedPath[pathIndex]) {
-             setCurrentLocation({ lat: decodedPath[pathIndex].lat(), lng: decodedPath[pathIndex].lng() });
-          }
-          const currentMilestone = milestones.find(m => nextKm >= m.km && nextKm <= m.km + 10 && m.name !== lastNotifiedMilestone);
-          if (currentMilestone) {
-             setNotification({ message: `We are crossing ${currentMilestone.name}`, visible: true });
-             setLastNotifiedMilestone(currentMilestone.name);
-             setTimeout(() => setNotification(curr => ({ ...curr, visible: false })), 4000);
-          }
-          return nextKm;
-        });
-      }, 300);
-    }
-    return () => clearInterval(interval);
-  }, [isSimulating, isLive, decodedPath, routeData.distance, milestones, lastNotifiedMilestone]);
 
   const addStop = () => {
     setStops([...stops, { id: Math.random().toString(36).substr(2, 9), address: '' }]);
@@ -406,7 +380,7 @@ const PlanTrip = () => {
            <button 
              onClick={toggleLiveTracking}
              style={{ 
-               flex: 2, 
+               flex: 1, 
                height: '56px', 
                borderRadius: '1.25rem', 
                background: isLive ? '#ef4444' : '#059669', 
@@ -418,39 +392,19 @@ const PlanTrip = () => {
                justifyContent: 'center', 
                gap: '0.75rem',
                boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.3)',
-               fontSize: '1rem'
+               fontSize: '1.15rem'
              }}
            >
-              {isLive ? <Pause size={22} /> : <LocateFixed size={22} />}
+              {isLive ? <Pause size={24} /> : <LocateFixed size={24} />}
               {isLive ? 'Stop Tracking' : 'Start Live Trip'}
-           </button>
-           <button 
-             onClick={() => setIsSimulating(!isSimulating)} 
-             disabled={isLive}
-             style={{ 
-               flex: 1, 
-               height: '56px', 
-               borderRadius: '1.25rem', 
-               background: isSimulating ? '#64748b' : '#e2e8f0', 
-               color: isSimulating ? 'white' : '#475569', 
-               border: 'none', 
-               fontWeight: 700, 
-               display: 'flex', 
-               alignItems: 'center', 
-               justifyContent: 'center',
-               fontSize: '0.875rem'
-             }}
-           >
-              {isSimulating ? 'Stop Sim' : 'Simulate'}
            </button>
            <button 
              onClick={() => { 
                setCurrentKm(0); 
-               setIsSimulating(false); 
                setIsLive(false); 
                if(watchId.current) navigator.geolocation.clearWatch(watchId.current); 
              }}
-             style={{ width: '56px', height: '56px', borderRadius: '1.25rem', background: '#f1f5f9', color: '#64748b', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+             style={{ width: '56px', height: '56px', borderRadius: '1.25rem', background: '#f1f5f9', color: '#64748b', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
            >
               <RotateCcw size={20} />
            </button>
@@ -471,7 +425,7 @@ const PlanTrip = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{isSimulating || isLive ? 72 : 0}</div>
+                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{isLive ? 72 : 0}</div>
                    <div style={{ fontSize: '0.5rem', opacity: 0.8, marginLeft: '2px' }}>KM/H</div>
                 </div>
                 <div>
