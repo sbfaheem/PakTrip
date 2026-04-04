@@ -30,7 +30,7 @@ const PlanTrip = () => {
     destination: 'NARAN',
     fuelNeed: 0,
     estCost: 0,
-    petrolPrice: 272,
+    petrolPrice: 378.41,
     tollCost: 0
   });
   const [isCalculating, setIsCalculating] = useState(false);
@@ -121,7 +121,7 @@ const PlanTrip = () => {
         const totalDistance = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
         const totalDuration = result.routes[0].legs.reduce((acc, leg) => acc + leg.duration.value, 0);
 
-        const petrolPrice = 272; // PKR per Liter (Latest Estimate)
+        const petrolPrice = 378.41; // PKR per Liter (Latest Pakistan Rate)
         const fuelLiters = (totalDistance / 1000) / 12; // 12km/L average as requested
         const tollEstimate = 500 + ((totalDistance/1000) * 1.5); // 500 base + 1.5/km
 
