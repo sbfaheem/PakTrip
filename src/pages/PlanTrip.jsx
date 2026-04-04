@@ -90,7 +90,7 @@ const PlanTrip = () => {
         const foundMilestones = [];
         let accumulatedDistance = 0;
         
-        const roadTerms = ['Rd', 'Road', 'Highway', 'Hwy', 'M-', 'N-', 'Bypass', 'Interchange', 'Exit', 'Merge', 'Turn', 'Lane', 'Way', 'Bridge', 'Flyover'];
+        const roadExcludeRegex = /\b(Rd|Road|Highway|Hwy|Bypass|Interchange|Exit|Merge|Turn|Lane|Way|Bridge|Flyover|Street|St|Entry|Ramp|North|South|East|West|M-\d+|N-\d+|Intersection|Motorway|Expressway)\b/i;
         
         result.routes[0].legs.forEach((leg) => {
           leg.steps.forEach((step) => {
@@ -100,10 +100,10 @@ const PlanTrip = () => {
               const cityName = match[match.length - 1].replace(/<\/?b>/g, '');
               
               // Filter out road names, numbers, and navigation commands
-              const isRoad = roadTerms.some(term => cityName.toLowerCase().includes(term.toLowerCase()));
+              const isExclude = roadExcludeRegex.test(cityName);
               const isNumber = /^\d+/.test(cityName); // e.g. "1st exit"
               
-              if (cityName.length > 3 && !isRoad && !isNumber) {
+              if (cityName.length > 2 && !isExclude && !isNumber) {
                 foundMilestones.push({ km: accumulatedDistance, name: cityName });
               }
             }
