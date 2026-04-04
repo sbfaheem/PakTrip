@@ -52,14 +52,29 @@ export const TripProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('paktrip_user');
-      return savedUser ? JSON.parse(savedUser) : {
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        // Schema Migration: Ensure new fields exist for existing users
+        if (!parsed.journeyHistory || !parsed.regionsVisited || parsed.avatar?.includes('unsplash')) {
+          return {
+            ...parsed,
+            avatar: parsed.avatar?.includes('unsplash') ? '/avatar.png' : parsed.avatar,
+            journeyHistory: parsed.journeyHistory || [],
+            regionsVisited: parsed.regionsVisited || []
+          };
+        }
+        return parsed;
+      }
+      return {
         name: 'Guest Explorer',
         email: 'explorer@paktrip.com',
         level: 'Newbie',
         bio: 'Ready to discover Pakistan!',
         avatar: '/avatar.png',
         joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-        isAuthenticated: false
+        isAuthenticated: false,
+        journeyHistory: [],
+        regionsVisited: []
       };
     } catch (e) {
       return {
@@ -69,7 +84,9 @@ export const TripProvider = ({ children }) => {
         bio: 'Ready to discover Pakistan!',
         avatar: '/avatar.png',
         joinedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-        isAuthenticated: false
+        isAuthenticated: false,
+        journeyHistory: [],
+        regionsVisited: []
       };
     }
   });
