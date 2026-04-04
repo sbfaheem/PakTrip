@@ -40,7 +40,6 @@ const DestinationCard = ({ name, location, rating, image, price, onClick }) => {
       <div style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#064e3b' }}>{name}</h3>
-          <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem' }}>PKR {price}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}>
           <MapPin size={14} /> {location}
@@ -64,6 +63,32 @@ const Explore = () => {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [categoryResults, setCategoryResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [detailsPlace, setDetailsPlace] = useState(null);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+
+  const fetchPlaceDetails = (placeName) => {
+    if (!isLoaded) return;
+    setIsFetchingDetails(true);
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    const request = {
+      query: placeName + ' in Pakistan',
+      fields: ['name', 'formatted_address', 'rating', 'photos', 'editorial_summary', 'types'],
+    };
+
+    service.textSearch(request, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results[0]) {
+        const place = results[0];
+        setDetailsPlace({
+          name: place.name,
+          location: place.formatted_address,
+          rating: place.rating || '4.5',
+          summary: place.editorial_summary?.overview || `Discover the beauty and history of ${place.name}. Located in ${place.formatted_address}, it is a top-rated destination for travelers in Pakistan.`,
+          image: place.photos ? place.photos[0].getUrl({ maxWidth: 1200 }) : 'https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop'
+        });
+      }
+      setIsFetchingDetails(false);
+    });
+  };
   
   const fetchCategoryResults = (category) => {
     if (!isLoaded || category === 'All') {
@@ -173,7 +198,7 @@ const Explore = () => {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1.5rem', scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1.5rem', paddingRight: '2rem', scrollbarWidth: 'none' }}>
         {categories.map(cat => (
           <button 
             key={cat}
@@ -184,6 +209,8 @@ const Explore = () => {
             {cat}
           </button>
         ))}
+        {/* Helper to ensure last tab isn't cut off */}
+        <div style={{ minWidth: '2rem' }}></div>
       </div>
 
       <AnimatePresence mode="popLayout">
@@ -200,7 +227,7 @@ const Explore = () => {
             <div style={{ marginBottom: '2rem' }}>
                <DestinationCard 
                  {...selectedPlace} 
-                 onClick={() => navigate('/plan', { state: { destination: selectedPlace.name } })}
+                 onClick={() => fetchPlaceDetails(selectedPlace.name)}
                />
                <button onClick={() => setSelectedPlace(null)} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', border: 'none', background: 'none', padding: 0 }}>Clear Results</button>
             </div>
@@ -210,7 +237,7 @@ const Explore = () => {
                 <DestinationCard 
                   key={dest.name + idx} 
                   {...dest} 
-                  onClick={() => navigate('/plan', { state: { destination: dest.name } })}
+                  onClick={() => fetchPlaceDetails(dest.name)}
                 />
               ))}
             </div>
@@ -220,7 +247,7 @@ const Explore = () => {
                 <DestinationCard 
                   key={dest.name} 
                   {...dest} 
-                  onClick={() => navigate('/plan', { state: { destination: dest.name } })}
+                  onClick={() => fetchPlaceDetails(dest.name)}
                 />
               ))}
             </div>
@@ -246,6 +273,71 @@ const Explore = () => {
           </div>
         </motion.div>
       </section>
+      <AnimatePresence>
+        {detailsPlace && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+            onClick={() => setDetailsPlace(null)}
+          >
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{ background: 'white', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem 1.5rem', position: 'relative' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px' }}></div>
+              </div>
+
+              <div style={{ borderRadius: '24px', overflow: 'hidden', height: '240px', marginBottom: '1.5rem', boxShadow: '0 8px 16px -4px rgba(0,0,0,0.1)' }}>
+                <img src={detailsPlace.image} alt={detailsPlace.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#064e3b' }}>{detailsPlace.name}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f0fdf4', padding: '0.5rem 0.75rem', borderRadius: '12px', color: '#16a34a', fontWeight: 800 }}>
+                  <Star size={16} fill="#16a34a" /> {detailsPlace.rating}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '1rem', fontWeight: 500, marginBottom: '1.5rem' }}>
+                <MapPin size={18} /> {detailsPlace.location}
+              </div>
+
+              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem', marginBottom: '2.5rem' }}>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem' }}>About this place</h4>
+                <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem' }}>{detailsPlace.summary}</p>
+              </div>
+
+              <button 
+                onClick={() => navigate('/plan', { state: { destination: detailsPlace.name } })}
+                style={{ width: '100%', padding: '1.25rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '18px', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', boxShadow: '0 10px 15px -3px rgba(6, 78, 59, 0.2)' }}
+              >
+                Plan My Trip Here
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isFetchingDetails && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}
+          >
+            <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+            <p style={{ fontWeight: 700, color: '#064e3b' }}>Fetching summaries from Google...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

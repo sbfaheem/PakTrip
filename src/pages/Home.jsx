@@ -75,7 +75,7 @@ const Home = () => {
       <section style={{ marginBottom: '2rem' }}>
         <motion.div 
           whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/splash')}
+          onClick={() => navigate('/plan')}
           style={{ 
             padding: '2rem', 
             borderRadius: '2.5rem', 
@@ -159,7 +159,7 @@ const Home = () => {
       <section style={{ marginBottom: '2.5rem' }}>
         <motion.div 
           whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/splash')}
+          onClick={() => navigate('/plan')}
           style={{ 
             padding: '2rem', 
             borderRadius: '2.5rem', 

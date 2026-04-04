@@ -54,7 +54,7 @@ const PlanTrip = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useTrips() || { user: {} };
+  const { user, activeTrip, completeTrip } = useTrips() || { user: {}, activeTrip: null, completeTrip: () => {} };
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -400,7 +400,7 @@ const PlanTrip = () => {
                 </motion.div>
               ))}
             </AnimatePresence>
-
+            
             {/* Destination */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: '22px', height: '22px', background: '#0284c7', borderRadius: '4px', zIndex: 1 }} />
