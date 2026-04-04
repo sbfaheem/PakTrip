@@ -49,15 +49,34 @@ export const TripProvider = ({ children }) => {
     }
   });
 
-  const [user, setUser] = useState({
-    name: 'Amina Khan',
-    level: 'Pro Explorer',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop'
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('paktrip_user');
+      return savedUser ? JSON.parse(savedUser) : {
+        name: 'Guest Explorer',
+        level: 'Newbie',
+        bio: 'Ready to discover Pakistan!',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        isAuthenticated: false
+      };
+    } catch (e) {
+      return {
+        name: 'Guest Explorer',
+        level: 'Newbie',
+        bio: 'Ready to discover Pakistan!',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+        isAuthenticated: false
+      };
+    }
   });
 
   useEffect(() => {
     localStorage.setItem('paktrip_trips_v2', JSON.stringify(trips));
   }, [trips]);
+
+  useEffect(() => {
+    localStorage.setItem('paktrip_user', JSON.stringify(user));
+  }, [user]);
 
   const addTrip = (newTrip) => {
     setTrips(prev => [{ ...newTrip, id: Date.now().toString() }, ...prev]);
@@ -65,6 +84,27 @@ export const TripProvider = ({ children }) => {
 
   const updateTripStatus = (id, status) => {
     setTrips(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+  };
+
+  const login = (userData) => {
+    setUser({
+      ...userData,
+      isAuthenticated: true
+    });
+  };
+
+  const logout = () => {
+    setUser({
+      name: 'Guest Explorer',
+      level: 'Newbie',
+      bio: 'Ready to discover Pakistan!',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop',
+      isAuthenticated: false
+    });
+  };
+
+  const updateUser = (newUserData) => {
+    setUser(prev => ({ ...prev, ...newUserData }));
   };
 
   const getStats = () => {
@@ -81,7 +121,7 @@ export const TripProvider = ({ children }) => {
   };
 
   return (
-    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, getStats }}>
+    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats }}>
       {children}
     </TripContext.Provider>
   );
