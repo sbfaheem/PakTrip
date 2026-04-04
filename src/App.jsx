@@ -1,5 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Home as HomeIcon, Compass, Backpack, User as UserIcon, Activity, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Trips from './pages/Trips';
@@ -45,9 +46,19 @@ function Layout({ children }) {
         </div>
       </header>
 
-      <main className="content" style={{ padding: '0 1rem' }}>
-        {children}
-      </main>
+      <AnimatePresence mode="wait">
+        <motion.main
+          key={location.pathname}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="content"
+          style={{ padding: '0 1rem' }}
+        >
+          {children}
+        </motion.main>
+      </AnimatePresence>
 
       <nav className="bottom-nav" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {navItems.map((item) => {

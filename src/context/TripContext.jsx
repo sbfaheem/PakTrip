@@ -12,36 +12,41 @@ export const useTrips = () => {
 
 export const TripProvider = ({ children }) => {
   const [trips, setTrips] = useState(() => {
-    const savedTrips = localStorage.getItem('paktrip_trips');
-    return savedTrips ? JSON.parse(savedTrips) : [
-      {
-        id: '1',
-        name: 'Naran Valley',
-        status: 'In Progress',
-        region: 'KPK',
-        date: 'April 1 - 7, 2026',
-        distance: 520,
-        image: 'https://images.unsplash.com/photo-1627548633724-99bc62c93883?q=80&w=400&auto=format&fit=crop'
-      },
-      {
-        id: '2',
-        name: 'Gwadar Shoreline',
-        status: 'Upcoming',
-        region: 'Balochistan',
-        date: 'May 12 - 15, 2026',
-        distance: 640,
-        image: 'https://images.unsplash.com/photo-1599661046289-e31887846eac?q=80&w=400&auto=format&fit=crop'
-      },
-      {
-        id: '3',
-        name: 'Fairy Meadows',
-        status: 'Completed',
-        region: 'Gilgit-Baltistan',
-        date: 'Oct 2025',
-        distance: 750,
-        image: 'https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?q=80&w=400&auto=format&fit=crop'
-      }
-    ];
+    try {
+      const savedTrips = localStorage.getItem('paktrip_trips');
+      return savedTrips ? JSON.parse(savedTrips) : [
+        {
+          id: '1',
+          name: 'Naran Valley',
+          status: 'In Progress',
+          region: 'KPK',
+          date: 'April 1 - 7, 2026',
+          distance: 520,
+          image: 'https://images.unsplash.com/photo-1627548633724-99bc62c93883?q=80&w=400&auto=format&fit=crop'
+        },
+        {
+          id: '2',
+          name: 'Gwadar Shoreline',
+          status: 'Upcoming',
+          region: 'Balochistan',
+          date: 'May 12 - 15, 2026',
+          distance: 640,
+          image: 'https://images.unsplash.com/photo-1599661046289-e31887846eac?q=80&w=400&auto=format&fit=crop'
+        },
+        {
+          id: '3',
+          name: 'Fairy Meadows',
+          status: 'Completed',
+          region: 'Gilgit-Baltistan',
+          date: 'Oct 2025',
+          distance: 750,
+          image: 'https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?q=80&w=400&auto=format&fit=crop'
+        }
+      ];
+    } catch (e) {
+      console.error("Failed to parse trips from localStorage", e);
+      return [];
+    }
   });
 
   const [user, setUser] = useState({
@@ -51,7 +56,7 @@ export const TripProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    localStorage.setItem('paktrip_trips', JSON.parse(JSON.stringify(trips)));
+    localStorage.setItem('paktrip_trips_v2', JSON.stringify(trips));
   }, [trips]);
 
   const addTrip = (newTrip) => {
