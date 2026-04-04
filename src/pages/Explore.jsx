@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Search, MapPin, Star, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { Loader2 } from 'lucide-react';
+
+const libraries = ['places'];
 
 const DestinationCard = ({ name, location, rating, image, price }) => (
   <motion.div 
@@ -33,8 +37,32 @@ const DestinationCard = ({ name, location, rating, image, price }) => (
 );
 
 const Explore = () => {
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries
+  });
+
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [autocomplete, setAutocomplete] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place.geometry) {
+        setSelectedPlace({
+          name: place.name || place.formatted_address,
+          location: place.formatted_address,
+          rating: place.rating || '4.5',
+          price: '8,000+', // Estimated base
+          cat: 'Explore',
+          image: place.photos ? place.photos[0].getUrl({ maxWidth: 800 }) : 'https://images.unsplash.com/photo-1549127013-35304597b199?q=80&w=800&auto=format&fit=crop'
+        });
+      }
+    }
+  };
   
   const categories = ['All', 'Mountains', 'Beaches', 'Culture', 'Adventure'];
 
@@ -59,14 +87,26 @@ const Explore = () => {
       style={{ padding: '1rem 0' }}
     >
       <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-        <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={20} />
-        <input 
-          type="text" 
-          placeholder="Where to next?" 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '1.15rem 1rem 1.15rem 3rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0', fontSize: '1rem', outline: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}
-        />
+        <Search style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 10 }} size={20} />
+        {isLoaded ? (
+          <Autocomplete 
+            onLoad={setAutocomplete} 
+            onPlaceChanged={onPlaceChanged}
+            options={{ componentRestrictions: { country: 'pk' } }}
+          >
+            <input 
+              type="text" 
+              placeholder="Where to next?" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '1.15rem 1rem 1.15rem 3rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0', fontSize: '1rem', outline: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}
+            />
+          </Autocomplete>
+        ) : (
+          <div style={{ width: '100%', padding: '1.15rem 1rem 1.15rem 3rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+             <Loader2 size={16} className="animate-spin" /> Loading Maps Search...
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1.5rem', scrollbarWidth: 'none' }}>
@@ -85,9 +125,14 @@ const Explore = () => {
       <AnimatePresence mode="popLayout">
         <section style={{ marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#064e3b', marginBottom: '1.25rem' }}>
-            {searchQuery ? `Search results for "${searchQuery}"` : 'Popular Destinations'}
+            {selectedPlace ? 'Top Match' : (searchQuery ? `Search results for "${searchQuery}"` : 'Popular Destinations')}
           </h2>
-          {filtered.length > 0 ? (
+          {selectedPlace ? (
+            <div style={{ marginBottom: '2rem' }}>
+               <DestinationCard {...selectedPlace} />
+               <button onClick={() => setSelectedPlace(null)} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary)', border: 'none', background: 'none', padding: 0 }}>Clear Results</button>
+            </div>
+          ) : filtered.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               {filtered.map(dest => (
                 <DestinationCard key={dest.name} {...dest} />
