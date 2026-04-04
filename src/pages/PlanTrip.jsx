@@ -29,7 +29,9 @@ const PlanTrip = () => {
     origin: 'ISLAMABAD',
     destination: 'NARAN',
     fuelNeed: 0,
-    estCost: 0
+    estCost: 0,
+    petrolPrice: 272,
+    tollCost: 0
   });
   const [isCalculating, setIsCalculating] = useState(false);
   
@@ -119,9 +121,9 @@ const PlanTrip = () => {
         const totalDistance = result.routes[0].legs.reduce((acc, leg) => acc + leg.distance.value, 0);
         const totalDuration = result.routes[0].legs.reduce((acc, leg) => acc + leg.duration.value, 0);
 
-        const fuelLiters = (totalDistance / 1000) / 10; // 10km/L average
+        const petrolPrice = 272; // PKR per Liter (Latest Estimate)
+        const fuelLiters = (totalDistance / 1000) / 12; // 12km/L average as requested
         const tollEstimate = 500 + ((totalDistance/1000) * 1.5); // 500 base + 1.5/km
-        const fuelPrice = 280;
 
         setRouteData({
           distance: `${(totalDistance / 1000).toFixed(0)} km`,
@@ -130,7 +132,9 @@ const PlanTrip = () => {
           origin: from.split(',')[0].toUpperCase(),
           destination: to.split(',')[0].toUpperCase(),
           fuelNeed: fuelLiters.toFixed(1),
-          estCost: Math.round((fuelLiters * fuelPrice) + tollEstimate)
+          estCost: Math.round((fuelLiters * petrolPrice) + tollEstimate),
+          petrolPrice,
+          tollCost: Math.round(tollEstimate)
         });
         setCurrentKm(0);
         setLastNotifiedMilestone(null);
@@ -401,7 +405,8 @@ const PlanTrip = () => {
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Fuel Need</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>{routeData.fuelNeed} Liters</div>
-              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on crossover SUV</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', margin: '2px 0' }}>Rs. {routeData.petrolPrice} / Liter</div>
+              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on Average as 12 km/liter</div>
             </div>
           </div>
           <div className="card" style={{ flex: 1, padding: '1.25rem', borderRadius: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -411,6 +416,7 @@ const PlanTrip = () => {
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Est. Cost</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>Rs. {routeData.estCost.toLocaleString()}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', margin: '2px 0' }}>Tolls: Rs. {routeData.tollCost.toLocaleString()}</div>
               <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Fuel + Tolls included</div>
             </div>
           </div>
