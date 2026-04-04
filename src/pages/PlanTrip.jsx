@@ -1,346 +1,140 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Search, MapPin, X, Plus, ChevronRight, Navigation,
-  Clock, Route, Trash2, GripVertical, ChevronDown, ArrowRight, Loader,
-  ArrowUpDown, Dot, Image as ImageIcon, Map as MapIcon, Info
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  useJsApiLoader, 
-  GoogleMap, 
-  Autocomplete, 
-  DirectionsService, 
-  DirectionsRenderer,
-  Marker
-} from '@react-google-maps/api';
+import { MapPin, Navigation, Clock, TrendingUp, Plus, X, ChevronRight, Bell, Layers, Activity } from 'lucide-react';
 import { useTrips } from '../context/TripContext';
-import TripCostCalculator from '../components/TripCostCalculator';
+import { useNavigate } from 'react-router-dom';
 
-/* ─── Premium Image Fallbacks ───────────────────────────────────────────── */
-const CITY_IMAGES = {
-  'Islamabad': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/islamabad_skyline_1775309193622.png',
-  'Hunza Valley': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/hunza_attabad_lake_1775309209361.png',
-  'Murree': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/murree_hills_1775309226315.png',
-  'Swat': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/swat_valley_ushia_1775309249924.png',
-  'Lahore': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/lahore_badshahi_mosque_1775309264840.png',
-  'Karachi': 'file:///C:/Users/bilal/.gemini/antigravity/brain/76da3754-ca96-4225-af30-52ae64296c80/karachi_mohatta_palace_1775309279441.png',
-};
-
-const NATURE_FALLBACK = 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1200&auto=format&fit=crop';
-
-const LIBRARIES = ['places'];
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-
-/* ─── Main Page ─────────────────────────────────────────────────── */
-export default function PlanTrip() {
+const PlanTrip = () => {
+  const [from, setFrom] = useState('Islamabad, Capital Territory');
+  const [to, setTo] = useState('Naran Valley, KP');
   const navigate = useNavigate();
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: LIBRARIES
-  });
-
-  // State
-  const [origin, setOrigin] = useState(null);
-  const [destination, setDestination] = useState(null);
-  const [directions, setDirections] = useState(null);
-  const { addTrip } = useTrips();
-  const [distance, setDistance] = useState(0);
-  const [duration, setDuration] = useState('');
-  
-  // Search Inputs
-  const [qOrigin, setQOrigin] = useState('');
-  const [qDest, setQDest] = useState('');
-
-  const originAutocompleteRef = useRef(null);
-  const destAutocompleteRef = useRef(null);
-  const mapRef = useRef(null);
-
-  // Extract Photo
-  const getPlaceImage = (place) => {
-    if (place.photos && place.photos.length > 0) {
-      return place.photos[0].getUrl({ maxWidth: 1200 });
-    }
-    return CITY_IMAGES[place.name] || NATURE_FALLBACK;
-  };
-
-  // Handle Selection
-  const onOriginSelect = () => {
-    const place = originAutocompleteRef.current.getPlace();
-    if (!place.geometry) return;
-    
-    setOrigin({
-      name: place.name,
-      formatted: place.formatted_address,
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-      image: getPlaceImage(place)
-    });
-    setQOrigin(place.formatted_address || place.name);
-    setDirections(null);
-  };
-
-  const onDestSelect = () => {
-    const place = destAutocompleteRef.current.getPlace();
-    if (!place.geometry) return;
-    
-    setDestination({
-      name: place.name,
-      formatted: place.formatted_address,
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-      image: getPlaceImage(place)
-    });
-    setQDest(place.formatted_address || place.name);
-    setDirections(null);
-  };
-
-  // Route Directions
-  const directionsCallback = useCallback((res) => {
-    if (res !== null && res.status === 'OK') {
-      setDirections(res);
-      const leg = res.routes[0].legs[0];
-      setDistance(leg.distance.value / 1000); 
-      setDuration(leg.duration.text);
-    }
-  }, []);
-
-  const swapLocations = () => {
-    const tempO = origin;
-    const tempQO = qOrigin;
-    setOrigin(destination);
-    setQOrigin(qDest);
-    setDestination(tempO);
-    setQDest(tempQO);
-    setDirections(null);
-  };
-
-  if (loadError) {
-    return (
-      <div style={{ padding: '4rem 2rem', textAlign: 'center', background: '#fffcfc', borderRadius: '24px', border: '1px solid #fee2e2' }}>
-        <AlertCircle size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
-        <h2 style={{ fontWeight: 800, marginBottom: '0.5rem' }}>Maps Configuration Error</h2>
-        <p style={{ color: '#991b1b', fontSize: '0.875rem' }}>Could not initialize Google Maps. Please verify your API Key in the environment settings.</p>
-      </div>
-    );
-  }
+  const { user } = useTrips();
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '0.5rem 0 2rem' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-         <div style={{ padding: '0.6rem', background: '#ecfdf5', borderRadius: '12px' }}>
-            <MapIcon size={24} color="var(--primary)" />
-         </div>
-         <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2px' }}>Smart Trip Planner</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Powered by Google Maps for precise routes.</p>
-         </div>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="app-container"
+      style={{ padding: 0, background: '#f8fafc', minHeight: '100vh', position: 'relative' }}
+    >
+      {/* Header Overlay */}
+      <header style={{ 
+        position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 10,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '1.25rem 1.5rem', background: 'linear-gradient(to bottom, rgba(255,255,255,0.9), transparent)' 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '12px', overflow: 'hidden', border: '2px solid white' }}>
+            <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#064e3b', letterSpacing: '-0.02em' }}>PakTrip</h1>
+        </div>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <Bell size={20} color="#64748b" />
+        </div>
+      </header>
+
+      {/* Hero Map Image */}
+      <div style={{ height: '55vh', position: 'relative', overflow: 'hidden' }}>
+        <img 
+          src="https://images.unsplash.com/photo-1548062005-e50d0639138c?q=80&w=2000&auto=format&fit=crop" 
+          alt="Karakoram Highway" 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        />
+        <div style={{ position: 'absolute', top: '90px', right: '20px', width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)' }}>
+          <Layers size={22} color="#475569" />
+        </div>
       </div>
 
-      {/* Main Route Selections Card */}
-      <div className="card" style={{ padding: '1.5rem', position: 'relative', marginBottom: '1.5rem' }}>
-         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Visual Indicator Trace */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', padding: '1rem 0' }}>
-               <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid var(--primary)', background: '#fff' }} />
-               <div style={{ width: '2px', height: '50px', background: 'linear-gradient(to bottom, var(--primary) 0%, #e5e7eb 100%)', borderRadius: '1px' }} />
-               <MapPin size={18} color="#ef4444" fill="#ef4444" />
+      {/* Floating Search Card */}
+      <div style={{ padding: '0 1.25rem', marginTop: '-120px', position: 'relative', zIndex: 20 }}>
+        <div className="card" style={{ padding: '1.5rem', borderRadius: '2.5rem', background: 'white', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+            {/* Visual connector */}
+            <div style={{ position: 'absolute', left: '10px', top: '24px', bottom: '24px', width: '2px', background: '#e2e8f0' }} />
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: '3px solid #059669', background: 'white', zIndex: 1 }} />
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input 
+                  type="text" 
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                />
+                <X size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
             </div>
 
-            {/* Inputs Container */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-               {isLoaded ? (
-                  <>
-                     <Autocomplete 
-                        onLoad={ref => originAutocompleteRef.current = ref} 
-                        onPlaceChanged={onOriginSelect}
-                        options={{ componentRestrictions: { country: 'pk' } }}
-                     >
-                        <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '12px', padding: '0.85rem 1rem', border: `2px solid ${!origin ? 'var(--primary)' : '#e5e7eb'}` }}>
-                           <input
-                              type="text"
-                              value={qOrigin}
-                              onChange={(e) => setQOrigin(e.target.value)}
-                              placeholder="Choose starting point..."
-                              style={{ border: 'none', outline: 'none', fontSize: '0.9375rem', width: '100%', fontWeight: 500 }}
-                           />
-                           {qOrigin && <X size={16} onClick={() => { setOrigin(null); setQOrigin(''); setDirections(null); }} style={{ cursor: 'pointer', color: '#9ca3af' }} />}
-                        </div>
-                     </Autocomplete>
-
-                     <Autocomplete 
-                        onLoad={ref => destAutocompleteRef.current = ref} 
-                        onPlaceChanged={onDestSelect}
-                        options={{ componentRestrictions: { country: 'pk' } }}
-                     >
-                        <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '12px', padding: '0.85rem 1rem', border: `2px solid ${origin && !destination ? 'var(--primary)' : '#e5e7eb'}` }}>
-                           <input
-                              type="text"
-                              value={qDest}
-                              onChange={(e) => setQDest(e.target.value)}
-                              placeholder="Choose destination..."
-                              style={{ border: 'none', outline: 'none', fontSize: '0.9375rem', width: '100%', fontWeight: 500 }}
-                           />
-                           {qDest && <X size={16} onClick={() => { setDestination(null); setQDest(''); setDirections(null); }} style={{ cursor: 'pointer', color: '#9ca3af' }} />}
-                        </div>
-                     </Autocomplete>
-                  </>
-               ) : (
-                  <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                     <Loader size={20} className="spin" />
-                  </div>
-               )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '22px', height: '22px', background: '#0284c7', borderRadius: '4px', zIndex: 1 }} />
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input 
+                  type="text" 
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  style={{ width: '100%', padding: '0.875rem 1rem', borderRadius: '1.25rem', background: '#f8fafc', border: '1px solid #f1f5f9', fontSize: '0.925rem', fontWeight: 600 }}
+                />
+                <X size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
             </div>
 
-            {/* Swap Button */}
-            <motion.button
-               whileHover={{ scale: 1.1 }}
-               whileTap={{ scale: 0.9 }}
-               onClick={swapLocations}
-               style={{
-                  background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px',
-                  padding: '0.75rem', cursor: 'pointer', color: 'var(--text-dark)'
-               }}
-            >
-               <ArrowUpDown size={18} />
-            </motion.button>
-         </div>
+            <button style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'none', border: 'none', padding: '0.5rem', color: '#059669', fontWeight: 700, fontSize: '0.875rem' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Plus size={14} />
+              </div>
+              Add Stop
+            </button>
+          </div>
+        </div>
+
+        {/* Route Details Card */}
+        <div style={{ marginTop: '1.5rem', padding: '1.5rem', borderRadius: '2.5rem', background: 'rgba(6, 95, 70, 0.05)', border: '1px solid rgba(6, 95, 70, 0.1)', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontSize: '0.625rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Recommended Route</div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#064e3b', letterSpacing: '-0.02em' }}>Karakoram Highway</h2>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#064e3b', marginBottom: '0.25rem' }}>6h 45m</div>
+              <div style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>284 km total</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tracking Context Card */}
+        <div className="card" style={{ padding: '1.5rem', borderRadius: '2.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>72</div>
+                   <div style={{ fontSize: '0.5rem', opacity: 0.8, marginLeft: '2px' }}>KM/H</div>
+                </div>
+                <div>
+                   <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-dark)' }}>Cruising smoothly</div>
+                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>ON N-15 HIGHWAY</div>
+                </div>
+             </div>
+             <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Next Stop</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#065f46' }}>Abbottabad • 14km</div>
+             </div>
+          </div>
+
+          <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
+            <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: '45%', height: '100%', background: '#059669' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>
+            <span>ISLAMABAD</span>
+            <span>NARAN</span>
+          </div>
+        </div>
       </div>
-
-      {/* Visual Route Map */}
-      <motion.div
-         layout
-         className="card"
-         style={{ padding: '0', overflow: 'hidden', height: destination || origin ? '350px' : '0', marginBottom: destination || origin ? '1.5rem' : '0', opacity: destination || origin ? 1 : 0, transition: 'all 0.4s' }}
-      >
-         {isLoaded && (destination || origin) && (
-            <GoogleMap
-               onLoad={map => mapRef.current = map}
-               center={origin ? { lat: origin.lat, lng: origin.lng } : (destination ? { lat: destination.lat, lng: destination.lng } : { lat: 33.6844, lng: 73.0479 })}
-               zoom={12}
-               mapContainerStyle={{ width: '100%', height: '100%' }}
-               options={{
-                  disableDefaultUI: true,
-                  styles: [
-                     { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#334155" }] },
-                     { featureType: "landscape", stylers: [{ color: "#f8fafc" }] },
-                     { featureType: "road", stylers: [{ color: "#ffffff" }] },
-                     { featureType: "water", stylers: [{ color: "#e2e8f0" }] }
-                  ]
-               }}
-            >
-               {origin && <Marker position={{ lat: origin.lat, lng: origin.lng }} label={{ text: 'A', color: '#fff', fontWeight: 'bold' }} />}
-               {destination && <Marker position={{ lat: destination.lat, lng: destination.lng }} label={{ text: 'B', color: '#fff', fontWeight: 'bold' }} />}
-               
-               {origin && destination && !directions && (
-                  <DirectionsService
-                     options={{
-                        origin: { lat: origin.lat, lng: origin.lng },
-                        destination: { lat: destination.lat, lng: destination.lng },
-                        travelMode: 'DRIVING'
-                     }}
-                     callback={directionsCallback}
-                  />
-               )}
-               {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: true, polylineOptions: { strokeColor: 'var(--primary)', strokeWeight: 5, strokeOpacity: 0.8 } }} />}
-            </GoogleMap>
-         )}
-      </motion.div>
-
-      {/* Destination Performance Card */}
-      <AnimatePresence>
-         {destination && (
-            <motion.div
-               initial={{ opacity: 0, y: 20 }}
-               animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: 20 }}
-               className="card"
-               style={{ padding: '0', overflow: 'hidden', marginBottom: '1.5rem' }}
-            >
-               <div style={{ position: 'relative', height: '220px' }}>
-                  <img src={destination.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={destination.name} />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)' }} />
-                  <div style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem', right: '1.5rem', color: '#fff' }}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px', opacity: 0.8 }}>
-                        <MapPin size={14} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final Destination</span>
-                     </div>
-                     <h3 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '2px', letterSpacing: '-0.02em' }}>{destination.name}</h3>
-                     <p style={{ fontSize: '0.85rem', opacity: 0.8, color: '#e2e8f0' }}>{destination.formatted}</p>
-                  </div>
-               </div>
-               <div style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}>
-                  <div style={{ display: 'flex', gap: '2rem' }}>
-                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
-                           <Route size={14} color="var(--primary)" />
-                           <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Road distance</span>
-                        </div>
-                        <div style={{ fontWeight: 800, color: 'var(--text-dark)', fontSize: '1.125rem' }}>{Math.round(distance)} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>km</span></div>
-                     </div>
-                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '4px' }}>
-                           <Clock size={14} color="var(--primary)" />
-                           <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Driving time</span>
-                        </div>
-                        <div style={{ fontWeight: 800, color: 'var(--text-dark)', fontSize: '1.125rem' }}>{duration || '...'}</div>
-                     </div>
-                  </div>
-                  <button 
-                    onClick={() => { setDestination(null); setQDest(''); setDirections(null); }} 
-                    style={{ 
-                      padding: '0.6rem 1rem', borderRadius: '10px', background: '#fee2e2', 
-                      color: '#ef4444', border: 'none', cursor: 'pointer', fontWeight: 700,
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                     Reset
-                  </button>
-               </div>
-            </motion.div>
-         )}
-      </AnimatePresence>
-
-      {/* Cost Calculator Section */}
-      {origin && destination && (
-         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <TripCostCalculator distanceKm={distance} />
-            <div style={{ height: '1.5rem' }} />
-            <motion.button
-               whileTap={{ scale: 0.98 }}
-               className="btn-primary"
-               onClick={() => {
-                 addTrip({
-                   name: destination.name,
-                   status: 'In Progress',
-                   region: 'Pakistan', // Default or parsed from formatted
-                   date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-                   distance: Math.round(distance),
-                   image: destination.image
-                 });
-                 navigate('/tracking');
-               }}
-               style={{ width: '100%', padding: '1.1rem', fontSize: '1rem', boxShadow: '0 8px 32px -4px #065f4640' }}
-            >
-               <Navigation size={20} /> Start Trip to {destination.name}
-            </motion.button>
-         </motion.div>
-      )}
-
-      {/* Initial Empty State */}
-      {!origin && !destination && (
-         <div style={{ textAlign: 'center', padding: '4rem 1.5rem', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🕌</div>
-          <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-dark)', fontWeight: 800, fontSize: '1.5rem' }}>Explore Pakistan</h3>
-          <p style={{ fontSize: '0.9375rem', maxWidth: '300px', margin: '0 auto', lineHeight: 1.5 }}>Search for any location in Pakistan to start mapping your journey with live route data.</p>
-         </div>
-      )}
-
-      <style>{`
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </motion.div>
   );
-}
+};
+
+export default PlanTrip;
