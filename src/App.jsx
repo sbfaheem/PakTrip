@@ -14,7 +14,8 @@ import { useTrips } from './context/TripContext';
 
 function PrivateRoute({ children }) {
   const { user } = useTrips();
-  return user.isAuthenticated ? children : <Navigate to="/login" />;
+  const location = useLocation();
+  return user.isAuthenticated ? children : <Navigate to="/login" state={{ from: location }} />;
 }
 
 function Layout({ children }) {
