@@ -46,10 +46,10 @@ export const sendTripUpdate = async (tripData, userEmail, updateType = 'Periodic
 
   try {
     const result = await emailjs.send(
-      'service_civ3ckj', // Your Gmail Service ID
-      'template_paktrip',
+      import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default_service',
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_paktrip',
       templateParams,
-      'user_placeholder'
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'user_placeholder'
     );
     console.log('Trip update email sent successfully:', result.text);
     return result;
