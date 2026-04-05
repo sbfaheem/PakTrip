@@ -35,6 +35,7 @@ export const sendTripUpdate = async (tripData, userEmail, updateType = 'Periodic
     `.trim()
   };
 
+  console.log('Sending Trip Update with params:', templateParams);
   try {
     const result = await emailjs.send(
       import.meta.env.VITE_EMAILJS_SERVICE_ID || 'default_service',
