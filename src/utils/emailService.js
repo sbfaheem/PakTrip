@@ -46,7 +46,7 @@ export const sendTripUpdate = async (tripData, userEmail, updateType = 'Periodic
 
   try {
     const result = await emailjs.send(
-      'default_service',
+      'service_civ3ckj', // Your Gmail Service ID
       'template_paktrip',
       templateParams,
       'user_placeholder'
