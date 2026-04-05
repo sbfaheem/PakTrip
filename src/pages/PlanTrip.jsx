@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Navigation, Clock, TrendingUp, Fuel, Plus, X, ChevronRight, Bell, Layers, Activity, Loader2, Play, Pause, RotateCcw, CheckCircle2, Trash2, LocateFixed } from 'lucide-react';
 import { Autocomplete, useJsApiLoader, GoogleMap, DirectionsRenderer, Marker } from '@react-google-maps/api';
@@ -59,6 +59,11 @@ const PlanTrip = () => {
   const stopRefs = useRef([]); // Ref for dynamic stop autocompletes
   const budgetRef = useRef(null); // Ref to track latest budget from calculator
   const watchId = useRef(null); // Ref for geolocation watch ID
+
+  const handleBudgetUpdate = useCallback((data) => {
+    setFullBudgetData(data);
+    budgetRef.current = data;
+  }, []);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -606,10 +611,7 @@ const PlanTrip = () => {
           isLoaded={isLoaded}
           roundTrip={roundTrip}
           setRoundTrip={setRoundTrip}
-          onUpdate={(data) => {
-            setFullBudgetData(data);
-            budgetRef.current = data;
-          }}
+          onUpdate={handleBudgetUpdate}
         />
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>

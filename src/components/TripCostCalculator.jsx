@@ -118,11 +118,20 @@ const initialHotelBooking = (id, checkIn = getToday()) => ({
   price: 0
 });
 
+const initialTollLog = (id) => ({
+  id,
+  title: '',
+  price: 0
+});
+
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip, onUpdate }) {
   const { notifSettings, updateNotifSettings } = useTrips();
   // 1. Tolls (Manual Input)
-  const [tollTax, setTollTax] = useState(0);
+  const [tollLogs, setTollLogs] = useState(() => {
+    const saved = localStorage.getItem('paktrip_toll_logs');
+    return saved ? JSON.parse(saved) : [initialTollLog(Date.now())];
+  });
   
   // 2. Intercity Trip Flow / Hotel (Enhanced Multi-Stay)
   const [isIntercity, setIsIntercity] = useState(distanceKm > 100);
@@ -166,6 +175,9 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
   useEffect(() => {
     localStorage.setItem('paktrip_hotel_logs', JSON.stringify(hotelLogs));
   }, [hotelLogs]);
+  useEffect(() => {
+    localStorage.setItem('paktrip_toll_logs', JSON.stringify(tollLogs));
+  }, [tollLogs]);
 
   const calc = useMemo(() => {
     if (distanceKm === 0) return {
@@ -175,7 +187,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
     // Transport Costs (Fuel)
     const liters = Number((dist / fuelAvg).toFixed(1));
     const fuelCost = liters * petrolPrice;
-    const totalTolls = Number(tollTax) || 0;
+    const totalTolls = tollLogs.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
     
     // Accommodation Costs (Multi-stay summation)
     let totalHotels = 0;
@@ -210,7 +222,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       liters,
       totalNights
     };
-  }, [dist, fuelAvg, petrolPrice, tollTax, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm]);
+  }, [dist, fuelAvg, petrolPrice, tollLogs, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm]);
 
   // Sync to parent for notifications
   useEffect(() => {
@@ -264,6 +276,20 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         updateHotel(id, 'location', place.name + (place.formatted_address ? ', ' + place.formatted_address : ''));
       }
     }
+  };
+
+  // Toll Actions
+  const addTollLine = () => setTollLogs([...tollLogs, initialTollLog(Date.now())]);
+  const removeTollLine = (id) => setTollLogs(tollLogs.filter(t => t.id !== id));
+  const updateTollLine = (id, field, value) => {
+    setTollLogs(tollLogs.map(t => {
+      if (t.id === id) {
+        let val = value;
+        if (field === 'price') val = value.replace(/[^0-9]/g, '') === '' ? 0 : Number(value.replace(/[^0-9]/g, ''));
+        return { ...t, [field]: val };
+      }
+      return t;
+    }));
   };
 
   // Food Actions
@@ -384,7 +410,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                 Food {calc.grandTotal > 0 ? Math.round((calc.totalFood / calc.grandTotal) * 100) : 0}%
              </div>
            )}
-           {Number(tollTax) > 0 && (
+           {calc.totalTolls > 0 && (
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
                 Tolls {calc.grandTotal > 0 ? Math.round((calc.totalTolls / calc.grandTotal) * 100) : 0}%
@@ -647,23 +673,43 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                 {/* 4. Vehicle & Toll Section */}
                 <div>
                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>⛽ Vehicle & Tolls</p>
+                   
+                   <div style={{ marginBottom: '1.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.75rem' }}>Toll Entries</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                         {tollLogs.map((toll) => (
+                            <div key={toll.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 40px', gap: '0.5rem', alignItems: 'center' }}>
+                               <input 
+                                 type="text" placeholder="e.g. M2 Toll"
+                                 value={toll.title} onChange={e => updateTollLine(toll.id, 'title', e.target.value)}
+                                 style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', fontWeight: 600 }}
+                               />
+                               <input 
+                                 type="text" inputMode="numeric" placeholder="Price"
+                                 value={toll.price || ''} onChange={e => updateTollLine(toll.id, 'price', e.target.value)}
+                                 style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', fontWeight: 700, textAlign: 'right' }}
+                               />
+                               <button 
+                                 onClick={() => removeTollLine(toll.id)}
+                                 disabled={tollLogs.length === 1}
+                                 style={{ padding: '0.65rem', border: 'none', background: 'none', color: '#ef4444', cursor: tollLogs.length === 1 ? 'default' : 'pointer', opacity: tollLogs.length === 1 ? 0.3 : 1 }}
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                            </div>
+                         ))}
+                         <button 
+                           onClick={addTollLine}
+                           style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', border: 'none', padding: '0.6rem 1rem', borderRadius: '10px', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                         >
+                            <Plus size={14} /> Add Toll
+                         </button>
+                      </div>
+                   </div>
+
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <label>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Manual Toll Price</span>
-                        <input 
-                          type="text" 
-                          inputMode="numeric"
-                          placeholder="Enter total tolls"
-                          value={tollTax || ''} 
-                          onChange={e => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
-                            setTollTax(val === '' ? 0 : Number(val));
-                          }}
-                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
-                        />
-                      </label>
-                      <Slider label="Avg Fuel Economy" value={fuelAvg} min={5} max={25} step={0.5} unit="km/L" onChange={setFuelAvg} color="#10b981" />
-                      <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={0.01} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
+                     <Slider label="Avg Fuel Economy" value={fuelAvg} min={5} max={25} step={0.5} unit="km/L" onChange={setFuelAvg} color="#10b981" />
+                     <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={0.01} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
                    </div>
                 </div>
                  <div style={{ height: '1px', background: '#f1f5f9' }} />
