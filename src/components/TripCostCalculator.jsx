@@ -651,8 +651,15 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                       <label>
                         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Manual Toll Price</span>
                         <input 
-                          type="number" min="0" value={tollTax} onChange={e => setTollTax(Math.max(0, Number(e.target.value)))}
-                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
+                          type="text" 
+                          inputMode="numeric"
+                          placeholder="Enter total tolls"
+                          value={tollTax || ''} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setTollTax(val === '' ? 0 : Number(val));
+                          }}
+                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
                         />
                       </label>
                       <Slider label="Avg Fuel Economy" value={fuelAvg} min={5} max={25} step={0.5} unit="km/L" onChange={setFuelAvg} color="#10b981" />
