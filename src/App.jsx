@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Home as HomeIcon, Compass, Backpack, User as UserIcon, Activity, Plus, Search, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +23,11 @@ function Layout({ children }) {
   const { trips, user } = useTrips() || { trips: [], user: {} };
   const hasInProgress = trips.some(t => t.status === 'In Progress');
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   const navItems = [
     { path: '/explore', icon: Compass, label: 'Explore' },
     { path: '/trips', icon: Backpack, label: 'Trips' },
@@ -33,13 +39,13 @@ function Layout({ children }) {
 
   return (
     <div className="app-container" style={{ paddingBottom: hideNav ? 0 : 'var(--nav-height)' }}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className="content"
           style={{ padding: hideNav ? 0 : '0 1rem' }}
         >
@@ -69,7 +75,7 @@ function Layout({ children }) {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: '4px', textDecoration: 'none', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    flex: 1
+                    flex: 1, height: '100%', position: 'relative', zIndex: 10
                   }}
                 >
                   <div style={{
@@ -78,7 +84,8 @@ function Layout({ children }) {
                     color: 'var(--primary)',
                     boxShadow: '0 0 0 4px white, 0 12px 24px -4px rgba(6, 95, 70, 0.3)',
                     border: '2.5px solid #059669',
-                    marginTop: '-32px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    marginTop: '-32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    pointerEvents: 'none'
                   }}>
                     <Plus size={28} />
                   </div>
@@ -89,7 +96,8 @@ function Layout({ children }) {
                     letterSpacing: '0.02em',
                     textTransform: 'uppercase',
                     textAlign: 'center',
-                    width: 'max-content'
+                    width: 'max-content',
+                    pointerEvents: 'none'
                   }}>{item.label}</span>
                 </Link>
               );
@@ -104,29 +112,38 @@ function Layout({ children }) {
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
+                  justifyContent: 'center',
                   gap: '6px',
                   textDecoration: 'none',
-                  flex: 1
+                  flex: 1,
+                  height: '100%',
+                  zIndex: 10
                 }}
               >
                 <item.icon 
                   size={24} 
                   color={isActive ? 'var(--primary)' : '#94a3b8'} 
                   fill={isActive ? '#f0fdf4' : 'none'}
-                  style={{ opacity: isActive ? 1 : 0.6, transition: 'all 0.3s' }} 
+                  style={{ 
+                    opacity: isActive ? 1 : 0.6, 
+                    transition: 'all 0.3s',
+                    pointerEvents: 'none'
+                  }} 
                 />
                 <span style={{ 
                   fontSize: '0.625rem', 
                   fontWeight: 800, 
                   color: isActive ? 'var(--primary)' : '#94a3b8', 
                   letterSpacing: '0.05em',
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  pointerEvents: 'none'
                 }}>{item.label}</span>
                 {item.label === 'Trips' && hasInProgress && (
                   <div style={{
-                    position: 'absolute', top: '0', right: '25%',
+                    position: 'absolute', top: '15px', right: '30%',
                     width: '8px', height: '8px', background: '#ef4444',
-                    borderRadius: '50%', border: '2px solid white'
+                    borderRadius: '50%', border: '2px solid white',
+                    pointerEvents: 'none'
                   }} />
                 )}
               </Link>

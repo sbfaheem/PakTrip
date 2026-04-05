@@ -54,7 +54,8 @@ const PlanTrip = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, activeTrip, completeTrip } = useTrips() || { user: {}, activeTrip: null, completeTrip: () => {} };
+  const { trips, user, completeTrip } = useTrips() || { trips: [], user: {}, completeTrip: () => {} };
+  const activeTrip = trips?.find(t => t.status === 'In Progress');
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -62,7 +63,7 @@ const PlanTrip = () => {
   });
 
   const calculateRoute = async () => {
-    if (!from || !to || !window.google) return;
+    if (!from || !to || !window.google || !window.google.maps) return;
     
     setIsCalculating(true);
     const directionsService = new window.google.maps.DirectionsService();
@@ -194,8 +195,8 @@ const PlanTrip = () => {
         }
         
         // Calculate progress based on nearest point in decodedPath
-        if (decodedPath.length > 0 && window.google) {
-           const totalKm = parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) || 100;
+        if (decodedPath.length > 0 && window.google && window.google.maps && window.google.maps.geometry) {
+           const totalKm = parseFloat(routeData.distance.toString().replace(/[^0-9.]/g, '')) || 100;
            
            // Find distance from origin to current point (simplified)
            const originPos = decodedPath[0];

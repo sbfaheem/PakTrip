@@ -97,7 +97,9 @@ const Trips = () => {
 
       {filteredTrips.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
-          <p>No {activeTab.toLowerCase()} trips found.</p>
+          <p>
+            {activeTab === 'All' ? 'No trips found.' : `No ${activeTab.toLowerCase()} trips found.`}
+          </p>
         </div>
       )}
     </motion.div>
