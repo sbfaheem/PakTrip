@@ -4,6 +4,7 @@ import { MapPin, Navigation, Clock, TrendingUp, Fuel, Plus, X, ChevronRight, Bel
 import { Autocomplete, useJsApiLoader, GoogleMap, DirectionsRenderer, Marker } from '@react-google-maps/api';
 import { useTrips } from '../context/TripContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import TripCostCalculator from '../components/TripCostCalculator';
 
 const libraries = ['places', 'geometry'];
 
@@ -23,11 +24,11 @@ const PlanTrip = () => {
   const [bannerImage, setBannerImage] = useState('https://images.unsplash.com/photo-1548062005-e50d0639138c?q=80&w=2000&auto=format&fit=crop');
   const [directionsResponse, setDirectionsResponse] = useState(null);
   const [routeData, setRouteData] = useState({
-    distance: '284 km',
-    duration: '6h 45m',
-    summary: 'Karakoram Highway',
-    origin: 'ISLAMABAD',
-    destination: 'NARAN',
+    distance: '0 km',
+    duration: '0m',
+    summary: 'Calculating...',
+    origin: '...',
+    destination: '...',
     fuelNeed: 0,
     estCost: 0,
     petrolPrice: 378.41,
@@ -61,6 +62,8 @@ const PlanTrip = () => {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries
   });
+
+  const autoStartProcessed = useRef(false);
 
   const calculateRoute = async () => {
     if (!from || !to || !window.google || !window.google.maps) return;
@@ -134,8 +137,8 @@ const PlanTrip = () => {
           distance: `${(totalDistance / 1000).toFixed(0)} km`,
           duration: `${Math.floor(totalDuration / 3600)}h ${Math.floor((totalDuration % 3600) / 60)}m`,
           summary: result.routes[0].summary || 'Main Route',
-          origin: from.split(',')[0].toUpperCase(),
-          destination: to.split(',')[0].toUpperCase(),
+          origin: (from || 'Unknown').split(',')[0].toUpperCase(),
+          destination: (to || 'Unknown').split(',')[0].toUpperCase(),
           fuelNeed: fuelLiters.toFixed(1),
           estCost: Math.round((fuelLiters * petrolPrice) + tollEstimate),
           petrolPrice,
@@ -152,16 +155,64 @@ const PlanTrip = () => {
   };
 
   useEffect(() => {
-    // If arriving from Explore/Home with a pre-selected destination
-    if (location.state?.destination) {
-      setTo(location.state.destination);
-      // Optional: auto-trigger search if you have a way to get coords from name
-    }
+    if (!isLoaded) return;
 
+    const handleAutoStart = async () => {
+      if (autoStartProcessed.current) return;
+      
+      const targetDest = location.state?.destination;
+      if (targetDest) {
+        setTo(targetDest);
+      }
+
+      if (location.state?.autoStart) {
+        autoStartProcessed.current = true;
+        if (!navigator.geolocation) return;
+
+        setIsCalculating(true);
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const { latitude, longitude } = position.coords;
+              const geocoder = new window.google.maps.Geocoder();
+              const response = await geocoder.geocode({ location: { lat: latitude, lng: longitude } });
+
+              if (response?.results?.[0]) {
+                const address = response.results[0].formatted_address;
+                setFrom(address);
+                setCurrentLocation({ lat: latitude, lng: longitude });
+              }
+            } catch (err) {
+              console.error("Geocoding failed:", err);
+            } finally {
+              setIsCalculating(false);
+            }
+          },
+          (err) => {
+            console.error("Geolocation failed:", err);
+            setIsCalculating(false);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      }
+    };
+
+    handleAutoStart();
+  }, [isLoaded, location.state]);
+
+  useEffect(() => {
     if (activeTrip && activeTrip.status === 'In Progress') {
       const timer = setTimeout(() => {
         calculateRoute();
       }, 500); 
+      return () => clearTimeout(timer);
+    }
+    
+    // Auto-calculate if both from and to are set (for auto-start flow)
+    if (from && to && !activeTrip) {
+       const timer = setTimeout(() => {
+        calculateRoute();
+      }, 800); 
       return () => clearTimeout(timer);
     }
   }, [from, to, stops, isLoaded]);
@@ -454,17 +505,22 @@ const PlanTrip = () => {
             </div>
           </div>
           <div className="card" style={{ flex: 1, padding: '1.25rem', borderRadius: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(3, 105, 161, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }}>
-               <TrendingUp size={20} />
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+               <Clock size={20} />
             </div>
             <div>
-              <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Est. Cost</div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>Rs. {routeData.estCost.toLocaleString()}</div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', margin: '2px 0' }}>Tolls: Rs. {routeData.tollCost.toLocaleString()}</div>
-              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Fuel + Tolls included</div>
+              <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Duration</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>{routeData.duration}</div>
+              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Traffic considered</div>
             </div>
           </div>
         </div>
+
+        {/* COMPREHENSIVE COST CALCULATOR */}
+        <TripCostCalculator 
+          distanceKm={parseFloat(routeData.distance.replace(/[^0-9.]/g, ''))} 
+          isLoaded={isLoaded}
+        />
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
            <button 

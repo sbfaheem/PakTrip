@@ -91,6 +91,8 @@ export const TripProvider = ({ children }) => {
     }
   });
 
+  const [isNavHidden, setIsNavHidden] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('paktrip_trips', JSON.stringify(trips));
   }, [trips]);
@@ -172,7 +174,7 @@ export const TripProvider = ({ children }) => {
   };
 
   return (
-    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats, completeTrip }}>
+    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats, completeTrip, isNavHidden, setIsNavHidden }}>
       {children}
     </TripContext.Provider>
   );

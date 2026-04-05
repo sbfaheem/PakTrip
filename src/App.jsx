@@ -21,7 +21,7 @@ function PrivateRoute({ children }) {
 function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { trips, user } = useTrips() || { trips: [], user: {} };
+  const { trips, user, isNavHidden } = useTrips() || { trips: [], user: {}, isNavHidden: false };
   const hasInProgress = trips.some(t => t.status === 'In Progress');
 
   // Scroll to top on route change
@@ -36,7 +36,7 @@ function Layout({ children }) {
     { path: '/profile', icon: UserIcon, label: 'Profile' },
   ];
 
-  const hideNav = location.pathname === '/login' || location.pathname === '/splash';
+  const hideNav = location.pathname === '/login' || location.pathname === '/splash' || isNavHidden;
 
   return (
     <div className="app-container" style={{ paddingBottom: hideNav ? 0 : 'var(--nav-height)' }}>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Star, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { useTrips } from '../context/TripContext';
 import { Loader2 } from 'lucide-react';
 
 const libraries = ['places'];
@@ -56,6 +57,8 @@ const Explore = () => {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries
   });
+
+  const { setIsNavHidden } = useTrips();
 
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,6 +138,11 @@ const Explore = () => {
       fetchCategoryResults('Famous tourist places');
     }
   }, [isLoaded]);
+  
+  React.useEffect(() => {
+    setIsNavHidden(!!detailsPlace);
+    return () => setIsNavHidden(false);
+  }, [detailsPlace, setIsNavHidden]);
 
   const onPlaceChanged = () => {
     if (autocomplete !== null) {
@@ -315,10 +323,10 @@ const Explore = () => {
               </div>
 
               <button 
-                onClick={() => navigate('/plan', { state: { destination: detailsPlace.name } })}
+                onClick={() => navigate('/plan', { state: { destination: detailsPlace.name, autoStart: true } })}
                 style={{ width: '100%', padding: '1.25rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '18px', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', boxShadow: '0 10px 15px -3px rgba(6, 78, 59, 0.2)' }}
               >
-                Plan My Trip Here
+                Start Trip from My Location
               </button>
             </motion.div>
           </motion.div>

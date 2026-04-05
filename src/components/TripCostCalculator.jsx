@@ -1,14 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Autocomplete } from '@react-google-maps/api';
 import {
   Fuel, Receipt, ArrowLeftRight, ChevronDown, ChevronUp,
   Calculator, TrendingUp, AlertCircle, RefreshCw, Gauge,
   CircleDollarSign, Wallet, Car, Info, Scale, Hotel, Utensils,
-  Users, Moon, Check
+  Users, Moon, Check, Plus, Trash2, Calendar, ArrowRight, MapPin
 } from 'lucide-react';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
 const fmt = (n) => Math.round(n).toLocaleString('en-PK');
+const getToday = () => new Date().toISOString().split('T')[0];
+const addDaysString = (dateStr, days) => {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
 
 /* ─── Custom UI Elements ─────────────────────────────────────────────────── */
 function Checkbox({ label, checked, onChange, icon: Icon, color }) {
@@ -94,56 +101,176 @@ function MetricCard({ icon: Icon, label, value, sub, color, large, disabled }) {
   );
 }
 
-/* ─── Main Component ──────────────────────────────────────────────────────── */
-export default function TripCostCalculator({ distanceKm = 0 }) {
-  const [includeStay, setIncludeStay] = useState(false);
-  const [includeFood, setIncludeFood] = useState(false);
+const initialMealDay = (id, date = getToday()) => ({
+  id,
+  date,
+  breakfast: { included: false, price: 0 },
+  lunch: { included: false, price: 0 },
+  dinner: { included: false, price: 0 }
+});
 
-  // Fuel/Tolls
-  const [fuelAvgMin, setFuelAvgMin] = useState(10);
-  const [fuelAvgMax, setFuelAvgMax] = useState(12);
-  const [petrolPrice, setPetrolPrice] = useState(378);
-  const [tollTax, setTollTax] = useState(2000);
-  const [roundTrip, setRoundTrip] = useState(false);
+const initialHotelBooking = (id, checkIn = getToday()) => ({
+  id,
+  location: '',
+  checkIn,
+  nights: 1,
+  price: 0
+});
+
+/* ─── Main Component ──────────────────────────────────────────────────────── */
+export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
+  // 1. Tolls (Manual Input)
+  const [tollTax, setTollTax] = useState(0);
   
-  // Hotels/Food
-  const [hotelNights, setHotelNights] = useState(3);
-  const [hotelPrice, setHotelPrice] = useState(8000);
-  const [numPersons, setNumPersons] = useState(2);
-  const [foodBudget, setFoodBudget] = useState(2000);
+  // 2. Intercity Trip Flow / Hotel (Enhanced Multi-Stay)
+  const [isIntercity, setIsIntercity] = useState(distanceKm > 100);
+  const [includeStay, setIncludeStay] = useState(false);
+  const [hotelLogs, setHotelLogs] = useState(() => {
+    const saved = localStorage.getItem('paktrip_hotel_logs');
+    return saved ? JSON.parse(saved) : [initialHotelBooking(Date.now())];
+  });
+
+  // Autocomplete Refs Map
+  const autocompleteRefs = useRef({});
+
+  // 3. Food Cost Section (Daily Tracking)
+  const [includeFood, setIncludeFood] = useState(false);
+  const [mealLogs, setMealLogs] = useState(() => {
+    const saved = localStorage.getItem('paktrip_food_logs');
+    return saved ? JSON.parse(saved) : [initialMealDay(Date.now())];
+  });
+
+  // 4. Number of People
+  const [numPersons, setNumPersons] = useState(1);
+  
+  // Fuel
+  const [fuelAvg, setFuelAvg] = useState(12);
+  const [petrolPrice, setPetrolPrice] = useState(378);
+  const [roundTrip, setRoundTrip] = useState(false);
 
   const [showParams, setShowParams] = useState(true);
-  const [showBreakdown, setShowBreakdown] = useState(false);
-
+  
   const multiplier = roundTrip ? 2 : 1;
   const dist = distanceKm * multiplier;
 
+  // Auto-detect intercity
+  useEffect(() => {
+    setIsIntercity(distanceKm > 100);
+  }, [distanceKm]);
+
+  // Persist logs
+  useEffect(() => {
+    localStorage.setItem('paktrip_food_logs', JSON.stringify(mealLogs));
+  }, [mealLogs]);
+  useEffect(() => {
+    localStorage.setItem('paktrip_hotel_logs', JSON.stringify(hotelLogs));
+  }, [hotelLogs]);
+
   const calc = useMemo(() => {
-    if (dist === 0) return null;
+    if (distanceKm === 0) return {
+        fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0
+    };
     
-    // Transport Costs
-    const litersLow  = dist / fuelAvgMax;
-    const litersHigh = dist / fuelAvgMin;
-    const costLow    = litersLow  * petrolPrice;
-    const costHigh   = litersHigh * petrolPrice;
-    const totalTolls = tollTax * multiplier;
+    // Transport Costs (Fuel)
+    const liters = dist / fuelAvg;
+    const fuelCost = liters * petrolPrice;
+    const totalTolls = Number(tollTax) || 0;
     
-    // Accomodation Costs
-    const totalHotels = includeStay ? (hotelNights * hotelPrice) : 0;
+    // Accommodation Costs (Multi-stay summation)
+    let totalHotels = 0;
+    let totalNights = 0;
+    if (includeStay) {
+      hotelLogs.forEach(h => {
+        totalHotels += (Number(h.nights) * Number(h.price));
+        totalNights += Number(h.nights);
+      });
+    }
     
-    // Food Costs (days = nights + 1)
-    const totalFood = includeFood ? ((hotelNights + 1) * numPersons * foodBudget) : 0;
+    // Food Costs (Daily logs summation)
+    let totalFood = 0;
+    if (includeFood) {
+      mealLogs.forEach(day => {
+        if (day.breakfast.included) totalFood += Number(day.breakfast.price);
+        if (day.lunch.included) totalFood += Number(day.lunch.price);
+        if (day.dinner.included) totalFood += Number(day.dinner.price);
+      });
+    }
+    
+    const grandTotal = fuelCost + totalTolls + totalHotels + totalFood;
+    const perPerson = numPersons > 0 ? grandTotal / numPersons : grandTotal;
     
     return {
-      litersLow, litersHigh,
-      costLow, costHigh,
+      fuelCost,
       totalTolls,
       totalHotels,
       totalFood,
-      grandTotalLow:  costLow  + totalTolls + totalHotels + totalFood,
-      grandTotalHigh: costHigh + totalTolls + totalHotels + totalFood,
+      grandTotal,
+      perPerson,
+      liters,
+      totalNights
     };
-  }, [dist, fuelAvgMin, fuelAvgMax, petrolPrice, tollTax, hotelNights, hotelPrice, numPersons, foodBudget, roundTrip, multiplier, includeStay, includeFood]);
+  }, [dist, fuelAvg, petrolPrice, tollTax, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm]);
+
+  // Hotel Actions
+  const addHotel = () => {
+    const last = hotelLogs[hotelLogs.length - 1];
+    const nextIn = addDaysString(last.checkIn, Number(last.nights));
+    setHotelLogs([...hotelLogs, initialHotelBooking(Date.now(), nextIn)]);
+  };
+  const removeHotel = (id) => {
+    setHotelLogs(hotelLogs.filter(h => h.id !== id));
+    delete autocompleteRefs.current[id];
+  };
+  const updateHotel = (id, field, value) => {
+    setHotelLogs(hotelLogs.map(h => {
+        if (h.id === id) {
+            let val = value;
+            if (field === 'price' || field === 'nights') val = Math.max(0, Number(value));
+            return { ...h, [field]: val };
+        }
+        return h;
+    }));
+  };
+
+  const onPlaceChanged = (id) => {
+    const autocomplete = autocompleteRefs.current[id];
+    if (autocomplete) {
+      const place = autocomplete.getPlace();
+      if (place && place.name) {
+        updateHotel(id, 'location', place.name + (place.formatted_address ? ', ' + place.formatted_address : ''));
+      }
+    }
+  };
+
+  // Food Actions
+  const addMealDay = () => {
+    const lastDay = mealLogs[mealLogs.length - 1];
+    const nextDate = addDaysString(lastDay.date, 1);
+    setMealLogs([...mealLogs, initialMealDay(Date.now(), nextDate)]);
+  };
+  const removeMealDay = (id) => setMealLogs(mealLogs.filter(d => d.id !== id));
+  const updateMealDay = (id, field, value) => {
+    setMealLogs(mealLogs.map(day => day.id === id ? { ...day, [field]: value } : day));
+  };
+  const updateMealType = (dayId, type, field, value) => {
+    setMealLogs(mealLogs.map(day => {
+      if (day.id === dayId) {
+        const updatedType = { ...day[type], [field]: value };
+        if (field === 'included' && !value) updatedType.price = 0;
+        if (field === 'price') updatedType.price = Math.max(0, Math.floor(Number(value)));
+        return { ...day, [type]: updatedType };
+      }
+      return day;
+    }));
+  };
+
+  const getDailySum = (day) => {
+    let sum = 0;
+    if (day.breakfast.included) sum += Number(day.breakfast.price);
+    if (day.lunch.included) sum += Number(day.lunch.price);
+    if (day.dinner.included) sum += Number(day.dinner.price);
+    return sum;
+  };
 
   if (distanceKm === 0) return null;
 
@@ -199,17 +326,17 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
               <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Trip Budget (PKR)</span>
             </div>
             <div style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {fmt(calc.grandTotalLow)} – {fmt(calc.grandTotalHigh)}
+              {fmt(calc.grandTotal)}
             </div>
             <p style={{ fontSize: '0.85rem', opacity: 0.8, marginTop: '0.75rem' }}>
-              Includes {includeStay ? 'Stays, ' : ''} {includeFood ? 'Meals & ' : ''} Fuel for {numPersons} {numPersons === 1 ? 'Person' : 'People'}
+              Cost per person: <span style={{ fontWeight: 800 }}>{fmt(calc.perPerson)}</span> (for {numPersons})
             </p>
           </div>
           {includeStay && (
              <div style={{ textAlign: 'right' }}>
                 <div style={{ background: 'rgba(255,255,255,0.15)', padding: '0.5rem 1rem', borderRadius: '12px', backdropFilter: 'blur(8px)' }}>
-                   <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8, marginBottom: '2px' }}>Stay Duration</div>
-                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{hotelNights} Nights</div>
+                   <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8, marginBottom: '2px' }}>Total Stay</div>
+                   <div style={{ fontSize: '1rem', fontWeight: 800 }}>{calc.totalNights} Nights</div>
                 </div>
              </div>
           )}
@@ -219,18 +346,24 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
         <div style={{ marginTop: '1.75rem', display: 'flex', gap: '1.5rem', opacity: 0.9, fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff' }} />
-              Fuel {Math.round((calc.costHigh / calc.grandTotalHigh) * 100)}%
+              Fuel {calc.grandTotal > 0 ? Math.round((calc.fuelCost / calc.grandTotal) * 100) : 0}%
            </div>
            {includeStay && (
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
-                Stays {Math.round((calc.totalHotels / calc.grandTotalHigh) * 100)}%
+                Stays {calc.grandTotal > 0 ? Math.round((calc.totalHotels / calc.grandTotal) * 100) : 0}%
              </div>
            )}
            {includeFood && (
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />
-                Food {Math.round((calc.totalFood / calc.grandTotalHigh) * 100)}%
+                Food {calc.grandTotal > 0 ? Math.round((calc.totalFood / calc.grandTotal) * 100) : 0}%
+             </div>
+           )}
+           {Number(tollTax) > 0 && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                Tolls {calc.grandTotal > 0 ? Math.round((calc.totalTolls / calc.grandTotal) * 100) : 0}%
              </div>
            )}
         </div>
@@ -242,10 +375,10 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
 
       {/* Metric Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.5rem' }}>
-        <MetricCard icon={Hotel} label="Accommodation" value={`${fmt(calc.totalHotels)}`} sub={`${hotelNights} nights`} color="#8b5cf6" disabled={!includeStay} />
-        <MetricCard icon={Utensils} label="Meals & Snacks" value={`${fmt(calc.totalFood)}`} sub={`${hotelNights + 1} days`} color="#ec4899" disabled={!includeFood} />
-        <MetricCard icon={Fuel} label="Total Fuel" value={`${fmt(calc.costLow)}–${fmt(calc.costHigh)}`} sub={`${calc.litersLow.toFixed(1)}L+`} color="#10b981" />
-        <MetricCard icon={Receipt} label="Total Tolls" value={`${fmt(calc.totalTolls)}`} sub={roundTrip ? 'Round trip' : 'One-way'} color="#3b82f6" />
+        <MetricCard icon={Hotel} label="Accommodation" value={`${fmt(calc.totalHotels)}`} sub={`${calc.totalNights} nights total`} color="#8b5cf6" disabled={!includeStay} />
+        <MetricCard icon={Utensils} label="Food Cost" value={`${fmt(calc.totalFood)}`} sub={`${mealLogs.length} days logged`} color="#ec4899" disabled={!includeFood} />
+        <MetricCard icon={Fuel} label="Total Fuel" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)}L total`} color="#10b981" />
+        <MetricCard icon={Receipt} label="Total Tolls" value={`${fmt(calc.totalTolls)}`} sub="Manual price" color="#3b82f6" />
       </div>
 
       {/* Control Panel Toggle */}
@@ -261,19 +394,9 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
              <Gauge size={18} color="var(--primary)" />
-             <span>Refine Budget Details</span>
+             <span>Edit Trip Parameters</span>
           </div>
           {showParams ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
-        <button
-          onClick={() => setShowBreakdown(!showBreakdown)}
-          style={{
-            padding: '1rem', borderRadius: '14px', border: '1px solid #e5e7eb',
-            background: showBreakdown ? '#f0fdf4' : '#fff', color: showBreakdown ? 'var(--primary)' : 'var(--text-dark)',
-            fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer'
-          }}
-        >
-          <Info size={20} />
         </button>
       </div>
 
@@ -288,17 +411,122 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
           >
             <div className="card" style={{ marginBottom: '1.5rem', background: '#fff' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Stay Section */}
+                
+                {/* 1. Group Section */}
                 <div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>🏨 Accomodation & Stay</p>
-                      <Checkbox label={includeStay ? "Included" : "Include?"} checked={includeStay} onChange={setIncludeStay} icon={Hotel} color="#8b5cf6" />
+                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', fontWeight: 700, textTransform: 'uppercase' }}>👥 Group Configuration</p>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <label style={{ flex: 1 }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Number of People</span>
+                        <input 
+                          type="number" min="1" value={numPersons} onChange={e => setNumPersons(Math.max(1, Number(e.target.value)))}
+                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                      </label>
+                   </div>
+                </div>
+
+                <div style={{ height: '1px', background: '#f1f5f9' }} />
+
+                {/* 2. Hotel Section (Multi-Booking) */}
+                <div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>🏨 Multiple Hotel Stays</p>
+                        {isIntercity && (
+                           <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: 600 }}>Intercity Journey - Tracking Hotel Stays</span>
+                        )}
+                      </div>
+                      <Checkbox label={includeStay ? "Tracking" : "Add Stays?"} checked={includeStay} onChange={setIncludeStay} icon={Hotel} color="#8b5cf6" />
                    </div>
                    <AnimatePresence>
                       {includeStay && (
-                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-                            <Slider label="Total Nights" value={hotelNights} min={1} max={15} step={1} unit="Nights" onChange={setHotelNights} color="#8b5cf6" />
-                            <Slider label="Avg Room Rate" value={hotelPrice} min={2000} max={50000} step={500} unit="PKR/Night" onChange={setHotelPrice} color="#8b5cf6" />
+                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {hotelLogs.map((h, hIdx) => (
+                               <div key={h.id} style={{ padding: '1.25rem 1rem', background: '#f5f3ff', borderRadius: '16px', border: '1px solid #ddd6fe' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', position: 'relative' }}>
+                                     <div style={{ position: 'relative', flex: 1 }}>
+                                        {isLoaded ? (
+                                           <Autocomplete 
+                                             onLoad={(autocomplete) => { autocompleteRefs.current[h.id] = autocomplete; }}
+                                             onPlaceChanged={() => onPlaceChanged(h.id)}
+                                           >
+                                              <input 
+                                                type="text" placeholder="Search for hotel or location"
+                                                value={h.location} onChange={e => updateHotel(h.id, 'location', e.target.value)}
+                                                style={{ width: '100%', padding: '0.55rem 0.5rem', paddingLeft: '2.4rem', borderRadius: '8px', border: '1px solid #c4b5fd', fontSize: '0.85rem', fontWeight: 700, background: '#fff' }}
+                                              />
+                                           </Autocomplete>
+                                        ) : (
+                                           <input 
+                                             type="text" placeholder="Where are you staying?"
+                                             value={h.location} onChange={e => updateHotel(h.id, 'location', e.target.value)}
+                                             style={{ width: '100%', padding: '0.55rem 0.5rem', paddingLeft: '2.4rem', borderRadius: '8px', border: '1px solid #c4b5fd', fontSize: '0.85rem', fontWeight: 700, background: '#fff' }}
+                                           />
+                                        )}
+                                        <MapPin size={16} color="#8b5cf6" style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }} />
+                                     </div>
+                                     {hotelLogs.length > 1 && (
+                                       <button onClick={() => removeHotel(h.id)} style={{ marginLeft: '0.75rem', padding: '0.45rem', color: '#ef4444', background: '#fee2e2', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex' }}>
+                                          <Trash2 size={16} />
+                                       </button>
+                                     )}
+                                  </div>
+
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                                     <label>
+                                        <span style={{ fontSize: '0.65rem', color: '#6d65be', display: 'block', marginBottom: '2px', fontWeight: 700 }}>Check-in Date</span>
+                                        <div style={{ position: 'relative' }}>
+                                           <input 
+                                             type="date" value={h.checkIn} onChange={e => updateHotel(h.id, 'checkIn', e.target.value)}
+                                             style={{ width: '100%', padding: '0.55rem', paddingLeft: '2.1rem', borderRadius: '8px', border: '1px solid #ddd6fe', fontSize: '0.8rem', fontWeight: 600 }}
+                                           />
+                                           <Calendar size={14} color="#a78bfa" style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)' }} />
+                                        </div>
+                                     </label>
+                                     <label>
+                                        <span style={{ fontSize: '0.65rem', color: '#6d65be', display: 'block', marginBottom: '2px', fontWeight: 700 }}>Nights</span>
+                                        <input 
+                                          type="number" min="1" value={h.nights} onChange={e => updateHotel(h.id, 'nights', e.target.value)}
+                                          style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #ddd6fe', fontSize: '0.85rem' }}
+                                        />
+                                     </label>
+                                  </div>
+
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem' }}>
+                                     <label>
+                                        <span style={{ fontSize: '0.65rem', color: '#6d65be', display: 'block', marginBottom: '2px', fontWeight: 700 }}>Room Rate (per night)</span>
+                                        <input 
+                                          type="number" min="0" value={h.price} onChange={e => updateHotel(h.id, 'price', e.target.value)}
+                                          style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #ddd6fe', fontSize: '0.85rem' }}
+                                        />
+                                     </label>
+                                     <div style={{ padding: '0.4rem 0.75rem', background: '#fff', borderRadius: '8px', border: '1px solid #ddd6fe', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <span style={{ fontSize: '0.6rem', color: '#8b5cf6', textTransform: 'uppercase', fontWeight: 700 }}>Check-out</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '1px' }}>
+                                           <ArrowRight size={12} color="#8b5cf6" />
+                                           <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4c1d95' }}>{addDaysString(h.checkIn, Number(h.nights))}</span>
+                                        </div>
+                                     </div>
+                                  </div>
+                                  
+                                  <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                                     <span style={{ fontSize: '0.7rem', color: '#8b5cf6', fontWeight: 700 }}>Booking Total: </span>
+                                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4c1d95' }}>Rs. {fmt(h.nights * h.price)}</span>
+                                  </div>
+                               </div>
+                            ))}
+                            
+                            <button 
+                             onClick={addHotel}
+                             style={{
+                               width: '100%', padding: '0.85rem', borderRadius: '14px', border: '2px dashed #c4b5fd',
+                               background: '#fdfcfe', color: '#7c3aed', fontSize: '0.82rem', fontWeight: 800,
+                               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem'
+                             }}
+                            >
+                             <Plus size={18} /> Add Entry for Next Booking
+                            </button>
                          </motion.div>
                       )}
                    </AnimatePresence>
@@ -306,17 +534,79 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
                 
                 <div style={{ height: '1px', background: '#f1f5f9' }} />
 
-                {/* Food Section */}
+                {/* 3. Food Section (Enhanced Daily Logs) */}
                 <div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>🍎 Group & Food</p>
-                      <Checkbox label={includeFood ? "Included" : "Include?"} checked={includeFood} onChange={setIncludeFood} icon={Utensils} color="#ec4899" />
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>🍎 Daily Food Logs</p>
+                      <Checkbox label={includeFood ? "Shared" : "Track Daily?"} checked={includeFood} onChange={setIncludeFood} icon={Utensils} color="#ec4899" />
                    </div>
                    <AnimatePresence>
                       {includeFood && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-                           <Slider label="Number of People" value={numPersons} min={1} max={12} step={1} unit="Persons" onChange={setNumPersons} color="#ec4899" />
-                           <Slider label="Daily Food per Person" value={foodBudget} min={500} max={10000} step={250} unit="PKR/Day" onChange={setFoodBudget} color="#ec4899" />
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                           {mealLogs.map((day, dIdx) => (
+                             <div key={day.id} style={{ padding: '1.25rem 1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                   <div style={{ position: 'relative', flex: 1, maxWidth: '160px' }}>
+                                      <input 
+                                        type="date" value={day.date} onChange={e => updateMealDay(day.id, 'date', e.target.value)}
+                                        style={{ width: '100%', padding: '0.4rem 0.5rem', paddingLeft: '2rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 700, background: '#fff' }}
+                                      />
+                                      <Calendar size={14} color="var(--primary)" style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)' }} />
+                                   </div>
+                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#94a3b8' }}>Day {dIdx + 1}</span>
+                                      {mealLogs.length > 1 && (
+                                        <button onClick={() => removeMealDay(day.id)} style={{ padding: '0.4rem', color: '#ef4444', background: '#fee2e2', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex' }}>
+                                           <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                   </div>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                   {['breakfast', 'lunch', 'dinner'].map((mealType) => (
+                                     <div key={mealType} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ minWidth: '95px' }}>
+                                           <select 
+                                              value={day[mealType].included ? 'Yes' : 'No'}
+                                              onChange={(e) => updateMealType(day.id, mealType, 'included', e.target.value === 'Yes')}
+                                              style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.72rem', fontWeight: 700, background: day[mealType].included ? '#fdf2f8' : '#fff' }}
+                                           >
+                                              <option value="No">No</option>
+                                              <option value="Yes">Yes</option>
+                                           </select>
+                                           <span style={{ fontSize: '0.6rem', textTransform: 'capitalize', color: '#94a3b8', display: 'block', marginTop: '3px', fontWeight: 700 }}>{mealType}</span>
+                                        </div>
+                                        <div style={{ position: 'relative', flex: 1 }}>
+                                           <input 
+                                              type="number" min="0" placeholder={`${mealType}`}
+                                              value={day[mealType].price}
+                                              onChange={e => updateMealType(day.id, mealType, 'price', e.target.value)}
+                                              disabled={!day[mealType].included}
+                                              style={{ width: '100%', padding: '0.6rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', opacity: day[mealType].included ? 1 : 0.4 }}
+                                           />
+                                        </div>
+                                     </div>
+                                   ))}
+                                </div>
+
+                                <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                   <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>Daily Total:</span>
+                                   <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)' }}>Rs. {fmt(getDailySum(day))}</span>
+                                </div>
+                             </div>
+                           ))}
+                           
+                           <button 
+                             onClick={addMealDay}
+                             style={{
+                               width: '100%', padding: '0.85rem', borderRadius: '14px', border: '2px dashed #cbd5e1',
+                               background: 'rgba(255,255,255,0.5)', color: '#64748b', fontSize: '0.82rem', fontWeight: 800,
+                               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem'
+                             }}
+                           >
+                             <Plus size={18} /> Add Entry for Next Day
+                           </button>
                         </motion.div>
                       )}
                    </AnimatePresence>
@@ -324,12 +614,20 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
 
                 <div style={{ height: '1px', background: '#f1f5f9' }} />
 
-                {/* Fuel & Tolls Section */}
+                {/* 4. Vehicle & Toll Section */}
                 <div>
-                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>⛽ Vehicle & Fuel</p>
-                   <Slider label="Fuel Avg (Lower Range)" value={fuelAvgMin} min={5} max={20} step={0.5} unit="km/L" onChange={setFuelAvgMin} color="#10b981" />
-                   <Slider label="Petrol Price" value={petrolPrice} min={200} max={500} step={1} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
-                   <Slider label="Est. Tolls (Per Way)" value={tollTax} min={0} max={10000} step={100} unit="PKR" onChange={setTollTax} color="#3b82f6" />
+                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>⛽ Vehicle & Tolls</p>
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <label>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Manual Toll Price</span>
+                        <input 
+                          type="number" min="0" value={tollTax} onChange={e => setTollTax(Math.max(0, Number(e.target.value)))}
+                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                      </label>
+                      <Slider label="Avg Fuel Economy" value={fuelAvg} min={5} max={25} step={0.5} unit="km/L" onChange={setFuelAvg} color="#10b981" />
+                      <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={1} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
+                   </div>
                 </div>
               </div>
             </div>
@@ -337,76 +635,49 @@ export default function TripCostCalculator({ distanceKm = 0 }) {
         )}
       </AnimatePresence>
 
-      {/* Calculation Breakdown Section */}
-      <AnimatePresence>
-        {showBreakdown && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div className="card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', color: 'var(--text-dark)', fontWeight: 700 }}>
-                <TrendingUp size={18} color="var(--primary)" />
-                Detailed Cost Math
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
-                {/* Fuel Row */}
-                <div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                      <span>Transport (Fuel + Tolls)</span>
-                      <span>{fmt(calc.costHigh + calc.totalTolls)} PKR</span>
-                   </div>
-                   <div style={{ fontSize: '0.72rem', opacity: 0.7, fontStyle: 'italic', marginTop: '2px' }}>
-                      ({fmt(dist)} km / {fuelAvgMin} km/L) × {petrolPrice} PKR + {calc.totalTolls} PKR
-                   </div>
-                </div>
+      {/* New Detailed Cost Math Breakdown */}
+      <div className="card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', color: 'var(--text-dark)', fontWeight: 700 }}>
+          <TrendingUp size={18} color="var(--primary)" />
+          Trip Cost Breakdown
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748b' }}>Fuel Cost:</span>
+            <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748b' }}>Toll Price:</span>
+            <span style={{ fontWeight: 600 }}>{fmt(calc.totalTolls)} PKR</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748b' }}>Hotel Cost:</span>
+            <span style={{ fontWeight: 600 }}>{fmt(calc.totalHotels)} PKR</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748b' }}>Food Cost:</span>
+            <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.75rem', marginTop: '0.25rem', borderTop: '2px solid #e2e8f0' }}>
+            <span style={{ fontWeight: 800, fontSize: '1rem' }}>Total Trip Cost:</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>{fmt(calc.grandTotal)} PKR</span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: '#f0fdf4', borderRadius: '10px' }}>
+            <span style={{ fontWeight: 700, color: '#065f46' }}>Total Cost Per Person:</span>
+            <span style={{ fontWeight: 800, color: '#065f46' }}>{fmt(calc.perPerson)} PKR</span>
+          </div>
+        </div>
 
-                {/* Hotel Row */}
-                {includeStay && (
-                   <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                         <span>Accommodation</span>
-                         <span>{fmt(calc.totalHotels)} PKR</span>
-                      </div>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.7, fontStyle: 'italic', marginTop: '2px' }}>
-                         {hotelNights} nights × {fmt(hotelPrice)} PKR per night
-                      </div>
-                   </div>
-                )}
-
-                {/* Food Row */}
-                {includeFood && (
-                   <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                         <span>Food & Meals</span>
-                         <span>{fmt(calc.totalFood)} PKR</span>
-                      </div>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.7, fontStyle: 'italic', marginTop: '2px' }}>
-                         {numPersons} persons × {hotelNights + 1} days × {fmt(foodBudget)} PKR/day
-                      </div>
-                   </div>
-                )}
-
-                {/* Total Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.75rem', marginTop: '0.25rem', borderTop: '2px solid #e2e8f0' }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>Total Travel Budget</span>
-                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--primary)' }}>{fmt(calc.grandTotalHigh)} PKR</span>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: '#ecfdf5', borderRadius: '10px', display: 'flex', gap: '0.75rem' }}>
-                <AlertCircle size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-dark)', lineHeight: 1.5 }}>
-                  This estimate is for planning purposes. We recommend carrying a 15-20% cash buffer for emergencies, unpredictable tolls, or extra excursions.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '10px', display: 'flex', gap: '0.75rem' }}>
+          <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <p style={{ fontSize: '0.72rem', color: '#92400e', lineHeight: 1.5 }}>
+            Estimate based on your inputs and current mileage averages. Always carry extra for emergencies!
+          </p>
+        </div>
+      </div>
     </motion.div>
   );
 }
