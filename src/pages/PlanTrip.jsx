@@ -5,6 +5,7 @@ import { Autocomplete, useJsApiLoader, GoogleMap, DirectionsRenderer, Marker } f
 import { useTrips } from '../context/TripContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TripCostCalculator from '../components/TripCostCalculator';
+import { sendTripUpdate } from '../utils/emailService';
 
 const libraries = ['places', 'geometry'];
 
@@ -18,6 +19,7 @@ const containerStyle = {
 };
 
 const PlanTrip = () => {
+  const { trips, addTrip, user, updateNotifSettings, notifSettings, completeTrip } = useTrips();
   const [from, setFrom] = useState('Karachi, Sindh, Pakistan');
   const [to, setTo] = useState('Islamabad, Islamabad Capital Territory, Pakistan');
   const [stops, setStops] = useState([]); // Array of intermediate locations
@@ -58,7 +60,6 @@ const PlanTrip = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { trips, user, completeTrip } = useTrips() || { trips: [], user: {}, completeTrip: () => {} };
   const activeTrip = trips?.find(t => t.status === 'In Progress');
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -204,7 +205,6 @@ const PlanTrip = () => {
 
     handleAutoStart();
   }, [isLoaded, location.state]);
-
   useEffect(() => {
     if (activeTrip && activeTrip.status === 'In Progress') {
       const timer = setTimeout(() => {
@@ -221,6 +221,61 @@ const PlanTrip = () => {
       return () => clearTimeout(timer);
     }
   }, [from, to, stops, isLoaded]);
+
+  // 1. Trigger: Origin/Destination Change Notification
+  useEffect(() => {
+    if (!notifSettings.email || !notifSettings.enableRouteAlerts || !directionsResponse) return;
+    
+    // We send an update when both from and to are set and route is calculated
+    const timeoutId = setTimeout(() => {
+      sendTripUpdate(
+        { 
+          ...routeData, 
+          name: `Trip to ${routeData.destination}`,
+          origin: from,
+          destination: to,
+          numPersons: routeData.numPersons || 1 // fallback if not in routeData
+        }, 
+        notifSettings.email, 
+        'Route Update'
+      );
+    }, 5000); // 5s debounce to ensure user finished typing/selecting
+    
+    return () => clearTimeout(timeoutId);
+  }, [from, to, notifSettings.email, notifSettings.enableRouteAlerts, directionsResponse]);
+
+  // 2. Trigger: Periodic Notification (6-8 hours)
+  useEffect(() => {
+    if (!notifSettings.email || !notifSettings.enablePeriodicUpdates || !directionsResponse) return;
+
+    const intervalMs = (notifSettings.periodicIntervalHours || 6) * 3600 * 1000;
+    
+    const checkAndSend = () => {
+      const now = Date.now();
+      const lastSent = notifSettings.lastSentAt || 0;
+      
+      if (now - lastSent >= intervalMs) {
+        sendTripUpdate(
+          { 
+            ...routeData, 
+            name: `Periodic Update: ${routeData.destination}`,
+            origin: from,
+            destination: to
+          },
+          notifSettings.email,
+          'Periodic Update'
+        );
+        updateNotifSettings({ lastSentAt: now });
+      }
+    };
+
+    // Initial check
+    checkAndSend();
+
+    // Set interval to check every 30 minutes
+    const timer = setInterval(checkAndSend, 30 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [notifSettings.email, notifSettings.enablePeriodicUpdates, directionsResponse, from, to]);
 
   // Live Geolocation Tracking
   const toggleLiveTracking = () => {

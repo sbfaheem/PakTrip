@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useTrips } from '../context/TripContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Autocomplete } from '@react-google-maps/api';
 import {
@@ -119,6 +120,7 @@ const initialHotelBooking = (id, checkIn = getToday()) => ({
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip }) {
+  const { notifSettings, updateNotifSettings } = useTrips();
   // 1. Tolls (Manual Input)
   const [tollTax, setTollTax] = useState(0);
   
@@ -634,6 +636,49 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                       <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={0.01} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
                    </div>
                 </div>
+                 <div style={{ height: '1px', background: '#f1f5f9' }} />
+
+                 {/* 5. Notification & Monitoring Section */}
+                 <div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>🔔 Monitoring & Alerts</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                       <label>
+                         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Notification Email</span>
+                         <input 
+                           type="email" placeholder="your@email.com"
+                           value={notifSettings.email} 
+                           onChange={e => updateNotifSettings({ email: e.target.value })}
+                           style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
+                         />
+                       </label>
+
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                           <input 
+                             type="checkbox" 
+                             checked={notifSettings.enableRouteAlerts}
+                             onChange={e => updateNotifSettings({ enableRouteAlerts: e.target.checked })}
+                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                           />
+                           <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Email update on Route Change</span>
+                         </label>
+
+                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                           <input 
+                             type="checkbox" 
+                             checked={notifSettings.enablePeriodicUpdates}
+                             onChange={e => updateNotifSettings({ enablePeriodicUpdates: e.target.checked })}
+                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                           />
+                           <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Periodic updates (Every 6h)</span>
+                         </label>
+                       </div>
+                       
+                       <p style={{ fontSize: '0.65rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                         * Emails are sent via EmailJS. Note that periodic updates require the app to be open in your browser.
+                       </p>
+                    </div>
+                 </div>
               </div>
             </div>
           </motion.div>

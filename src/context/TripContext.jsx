@@ -92,6 +92,26 @@ export const TripProvider = ({ children }) => {
   });
 
   const [isNavHidden, setIsNavHidden] = useState(false);
+  const [notifSettings, setNotifSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paktrip_notifications');
+      return saved ? JSON.parse(saved) : {
+        email: '',
+        enableRouteAlerts: true,
+        enablePeriodicUpdates: false,
+        periodicIntervalHours: 6,
+        lastSentAt: null
+      };
+    } catch (e) {
+      return {
+        email: '',
+        enableRouteAlerts: true,
+        enablePeriodicUpdates: false,
+        periodicIntervalHours: 6,
+        lastSentAt: null
+      };
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem('paktrip_trips', JSON.stringify(trips));
@@ -100,6 +120,10 @@ export const TripProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('paktrip_user', JSON.stringify(user));
   }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('paktrip_notifications', JSON.stringify(notifSettings));
+  }, [notifSettings]);
 
   const addTrip = (newTrip) => {
     setTrips(prev => [{ ...newTrip, id: Date.now().toString() }, ...prev]);
@@ -132,6 +156,10 @@ export const TripProvider = ({ children }) => {
 
   const updateUser = (newUserData) => {
     setUser(prev => ({ ...prev, ...newUserData }));
+  };
+
+  const updateNotifSettings = (newSettings) => {
+    setNotifSettings(prev => ({ ...prev, ...newSettings }));
   };
 
   const completeTrip = (tripData) => {
@@ -174,7 +202,11 @@ export const TripProvider = ({ children }) => {
   };
 
   return (
-    <TripContext.Provider value={{ trips, user, addTrip, updateTripStatus, login, logout, updateUser, getStats, completeTrip, isNavHidden, setIsNavHidden }}>
+    <TripContext.Provider value={{ 
+      trips, user, addTrip, updateTripStatus, login, logout, updateUser, 
+      getStats, completeTrip, isNavHidden, setIsNavHidden, 
+      notifSettings, updateNotifSettings 
+    }}>
       {children}
     </TripContext.Provider>
   );
