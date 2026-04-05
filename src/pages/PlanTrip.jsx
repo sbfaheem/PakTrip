@@ -18,8 +18,8 @@ const containerStyle = {
 };
 
 const PlanTrip = () => {
-  const [from, setFrom] = useState('Islamabad, Capital Territory');
-  const [to, setTo] = useState('Naran Valley, KP');
+  const [from, setFrom] = useState('Karachi, Sindh, Pakistan');
+  const [to, setTo] = useState('Islamabad, Islamabad Capital Territory, Pakistan');
   const [stops, setStops] = useState([]); // Array of intermediate locations
   const [bannerImage, setBannerImage] = useState('https://images.unsplash.com/photo-1548062005-e50d0639138c?q=80&w=2000&auto=format&fit=crop');
   const [directionsResponse, setDirectionsResponse] = useState(null);
