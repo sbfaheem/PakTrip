@@ -15,19 +15,10 @@ export const sendTripUpdate = async (tripData, userEmail, updateType = 'Periodic
 
   // Format the data for the EmailJS template
   const templateParams = {
-    to_email: userEmail,
+    email: userEmail,
+    name: 'Traveler', // Or a user name if available
+    title: `${tripData.origin} to ${tripData.destination}`,
     update_type: updateType,
-    trip_name: tripData.name || 'My PakTrip Journey',
-    origin: tripData.origin || 'N/A',
-    destination: tripData.destination || 'N/A',
-    distance: tripData.distance || '0 km',
-    duration: tripData.duration || '0m',
-    fuel_total: tripData.fuelCost || 0,
-    hotel_total: tripData.hotelCost || 0,
-    food_total: tripData.totalFood || 0,
-    grand_total: tripData.grandTotal || 0,
-    per_person: tripData.perPerson || 0,
-    num_people: tripData.numPersons || 1,
     last_updated: new Date().toLocaleString(),
     details: `
       Route: ${tripData.origin} to ${tripData.destination}
