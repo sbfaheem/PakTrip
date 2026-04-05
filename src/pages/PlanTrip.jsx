@@ -140,7 +140,7 @@ const PlanTrip = () => {
           origin: (from || 'Unknown').split(',')[0].toUpperCase(),
           destination: (to || 'Unknown').split(',')[0].toUpperCase(),
           fuelNeed: fuelLiters.toFixed(1),
-          estCost: Math.round((fuelLiters * petrolPrice) + tollEstimate),
+          estCost: Math.round((Number(fuelLiters.toFixed(1)) * petrolPrice) + tollEstimate),
           petrolPrice,
           tollCost: Math.round(tollEstimate)
         });

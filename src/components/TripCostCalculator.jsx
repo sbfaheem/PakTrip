@@ -145,7 +145,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
   
   // Fuel
   const [fuelAvg, setFuelAvg] = useState(12);
-  const [petrolPrice, setPetrolPrice] = useState(378);
+  const [petrolPrice, setPetrolPrice] = useState(378.41);
   const [roundTrip, setRoundTrip] = useState(false);
 
   const [showParams, setShowParams] = useState(true);
@@ -172,7 +172,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
     };
     
     // Transport Costs (Fuel)
-    const liters = dist / fuelAvg;
+    const liters = Number((dist / fuelAvg).toFixed(1));
     const fuelCost = liters * petrolPrice;
     const totalTolls = Number(tollTax) || 0;
     
@@ -626,7 +626,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
                         />
                       </label>
                       <Slider label="Avg Fuel Economy" value={fuelAvg} min={5} max={25} step={0.5} unit="km/L" onChange={setFuelAvg} color="#10b981" />
-                      <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={1} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
+                      <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={0.01} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
                    </div>
                 </div>
               </div>
