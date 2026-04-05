@@ -118,7 +118,7 @@ const initialHotelBooking = (id, checkIn = getToday()) => ({
 });
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
-export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
+export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip }) {
   // 1. Tolls (Manual Input)
   const [tollTax, setTollTax] = useState(0);
   
@@ -146,7 +146,6 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded }) {
   // Fuel
   const [fuelAvg, setFuelAvg] = useState(12);
   const [petrolPrice, setPetrolPrice] = useState(378.41);
-  const [roundTrip, setRoundTrip] = useState(false);
 
   const [showParams, setShowParams] = useState(true);
   

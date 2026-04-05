@@ -23,9 +23,12 @@ const PlanTrip = () => {
   const [stops, setStops] = useState([]); // Array of intermediate locations
   const [bannerImage, setBannerImage] = useState('https://images.unsplash.com/photo-1548062005-e50d0639138c?q=80&w=2000&auto=format&fit=crop');
   const [directionsResponse, setDirectionsResponse] = useState(null);
+  const [roundTrip, setRoundTrip] = useState(false);
   const [routeData, setRouteData] = useState({
     distance: '0 km',
     duration: '0m',
+    rawDistance: 0,
+    rawDuration: 0,
     summary: 'Calculating...',
     origin: '...',
     destination: '...',
@@ -136,6 +139,8 @@ const PlanTrip = () => {
         setRouteData({
           distance: `${(totalDistance / 1000).toFixed(0)} km`,
           duration: `${Math.floor(totalDuration / 3600)}h ${Math.floor((totalDuration % 3600) / 60)}m`,
+          rawDistance: totalDistance,
+          rawDuration: totalDuration,
           summary: result.routes[0].summary || 'Main Route',
           origin: (from || 'Unknown').split(',')[0].toUpperCase(),
           destination: (to || 'Unknown').split(',')[0].toUpperCase(),
@@ -486,8 +491,18 @@ const PlanTrip = () => {
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#064e3b', letterSpacing: '-0.02em' }}>{routeData.summary}</h2>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#064e3b', marginBottom: '0.25rem' }}>{routeData.duration}</div>
-              <div style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>{routeData.distance} total</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#064e3b', marginBottom: '0.25rem' }}>
+                {(() => {
+                  const mult = roundTrip ? 2 : 1;
+                  const totalSec = (routeData.rawDuration || 0) * mult;
+                  const h = Math.floor(totalSec / 3600);
+                  const m = Math.floor((totalSec % 3600) / 60);
+                  return `${h}h ${m}m`;
+                })()}
+              </div>
+              <div style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600 }}>
+                {(parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) * (roundTrip ? 2 : 1)).toLocaleString()} km total
+              </div>
             </div>
           </div>
         </div>
@@ -499,7 +514,9 @@ const PlanTrip = () => {
             </div>
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Fuel Need</div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>{routeData.fuelNeed} Liters</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+                {(Number(routeData.fuelNeed) * (roundTrip ? 2 : 1)).toFixed(1)} Liters
+              </div>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', margin: '2px 0' }}>Rs. {routeData.petrolPrice} / Liter</div>
               <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on Average as 12 km/liter</div>
             </div>
@@ -510,7 +527,13 @@ const PlanTrip = () => {
             </div>
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Duration</div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>{routeData.duration}</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+                {(() => {
+                  const mult = roundTrip ? 2 : 1;
+                  const totalSec = (routeData.rawDuration || 0) * mult;
+                  return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`;
+                })()}
+              </div>
               <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Traffic considered</div>
             </div>
           </div>
@@ -520,6 +543,8 @@ const PlanTrip = () => {
         <TripCostCalculator 
           distanceKm={parseFloat(routeData.distance.replace(/[^0-9.]/g, ''))} 
           isLoaded={isLoaded}
+          roundTrip={roundTrip}
+          setRoundTrip={setRoundTrip}
         />
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
