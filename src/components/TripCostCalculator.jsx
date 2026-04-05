@@ -418,7 +418,13 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                       <label style={{ flex: 1 }}>
                         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Number of People</span>
                         <input 
-                          type="number" min="1" value={numPersons} onChange={e => setNumPersons(Math.max(1, Number(e.target.value)))}
+                          type="text" 
+                          inputMode="numeric"
+                          value={numPersons} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setNumPersons(val === '' ? '' : Math.max(1, Number(val)));
+                          }}
                           style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
                         />
                       </label>
