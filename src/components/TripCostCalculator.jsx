@@ -119,7 +119,7 @@ const initialHotelBooking = (id, checkIn = getToday()) => ({
 });
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
-export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip }) {
+export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip, onUpdate }) {
   const { notifSettings, updateNotifSettings } = useTrips();
   // 1. Tolls (Manual Input)
   const [tollTax, setTollTax] = useState(0);
@@ -211,6 +211,18 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       totalNights
     };
   }, [dist, fuelAvg, petrolPrice, tollTax, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm]);
+
+  // Sync to parent for notifications
+  useEffect(() => {
+    if (onUpdate) {
+      onUpdate({
+        ...calc,
+        numPersons,
+        fuelAvg,
+        petrolPrice
+      });
+    }
+  }, [calc, numPersons, fuelAvg, petrolPrice, onUpdate]);
 
   // Hotel Actions
   const addHotel = () => {

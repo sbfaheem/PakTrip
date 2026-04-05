@@ -27,11 +27,11 @@ export const sendTripUpdate = async (tripData, userEmail, updateType = 'Periodic
       Number of People: ${tripData.numPersons}
       
       Budget Breakdown:
-      - Fuel: Rs. ${tripData.fuelCost}
-      - Hotels: Rs. ${tripData.hotelCost}
-      - Food: Rs. ${tripData.totalFood}
-      - Total: Rs. ${tripData.grandTotal}
-      - Cost Per Person: Rs. ${tripData.perPerson}
+      - Fuel: Rs. ${tripData.fuelCost?.toLocaleString() || 0}
+      - Hotels: Rs. ${tripData.totalHotels?.toLocaleString() || 0}
+      - Food: Rs. ${tripData.totalFood?.toLocaleString() || 0}
+      - Total: Rs. ${tripData.grandTotal?.toLocaleString() || 0}
+      - Cost Per Person: Rs. ${tripData.perPerson?.toLocaleString() || 0}
     `.trim()
   };
 

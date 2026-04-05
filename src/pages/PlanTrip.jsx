@@ -52,6 +52,7 @@ const PlanTrip = () => {
   const [lastNotifiedMilestone, setLastNotifiedMilestone] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [tripSummaryData, setTripSummaryData] = useState(null);
+  const [fullBudgetData, setFullBudgetData] = useState(null);
   
   const fromAutocompleteRef = useRef(null);
   const toAutocompleteRef = useRef(null);
@@ -230,11 +231,12 @@ const PlanTrip = () => {
     const timeoutId = setTimeout(() => {
       sendTripUpdate(
         { 
-          ...routeData, 
+          ...routeData,
+          ...fullBudgetData, 
           name: `Trip to ${routeData.destination}`,
           origin: from,
           destination: to,
-          numPersons: routeData.numPersons || 1 // fallback if not in routeData
+          numPersons: fullBudgetData?.numPersons || routeData.numPersons || 1
         }, 
         notifSettings.email, 
         'Route Update'
@@ -600,6 +602,7 @@ const PlanTrip = () => {
           isLoaded={isLoaded}
           roundTrip={roundTrip}
           setRoundTrip={setRoundTrip}
+          onUpdate={setFullBudgetData}
         />
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
