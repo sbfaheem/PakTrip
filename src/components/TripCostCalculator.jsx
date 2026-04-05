@@ -215,8 +215,19 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
   // Sync to parent for notifications
   useEffect(() => {
     if (onUpdate) {
-      onUpdate({
+      // Create a rounded version of the budget for the email reports
+      const roundedCalc = {
         ...calc,
+        fuelCost: Math.round(calc.fuelCost || 0),
+        totalTolls: Math.round(calc.totalTolls || 0),
+        totalHotels: Math.round(calc.totalHotels || 0),
+        totalFood: Math.round(calc.totalFood || 0),
+        grandTotal: Math.round(calc.grandTotal || 0),
+        perPerson: Math.round(calc.perPerson || 0)
+      };
+
+      onUpdate({
+        ...roundedCalc,
         numPersons,
         fuelAvg,
         petrolPrice

@@ -57,6 +57,7 @@ const PlanTrip = () => {
   const fromAutocompleteRef = useRef(null);
   const toAutocompleteRef = useRef(null);
   const stopRefs = useRef([]); // Ref for dynamic stop autocompletes
+  const budgetRef = useRef(null); // Ref to track latest budget from calculator
   const watchId = useRef(null); // Ref for geolocation watch ID
 
   const navigate = useNavigate();
@@ -229,19 +230,22 @@ const PlanTrip = () => {
     
     // We send an update when both from and to are set and route is calculated
     const timeoutId = setTimeout(() => {
+      // Use the Ref to ensure we have the absolute latest calculation from the child
+      const latestBudget = budgetRef.current;
+      
       sendTripUpdate(
         { 
           ...routeData,
-          ...fullBudgetData, 
+          ...latestBudget, 
           name: `Trip to ${routeData.destination}`,
           origin: from,
           destination: to,
-          numPersons: fullBudgetData?.numPersons || routeData.numPersons || 1
+          numPersons: latestBudget?.numPersons || routeData.numPersons || 1
         }, 
         notifSettings.email, 
         'Route Update'
       );
-    }, 5000); // 5s debounce to ensure user finished typing/selecting
+    }, 6000); // 6s debounce to allow calculator to settle
     
     return () => clearTimeout(timeoutId);
   }, [from, to, notifSettings.email, notifSettings.enableRouteAlerts, directionsResponse]);
@@ -602,7 +606,10 @@ const PlanTrip = () => {
           isLoaded={isLoaded}
           roundTrip={roundTrip}
           setRoundTrip={setRoundTrip}
-          onUpdate={setFullBudgetData}
+          onUpdate={(data) => {
+            setFullBudgetData(data);
+            budgetRef.current = data;
+          }}
         />
 
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
