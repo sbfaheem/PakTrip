@@ -881,26 +881,24 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
-          {(calc.fuelCost > 0) && (
+          {(calc.fuelEntries.length > 0) && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Fuel Cost:</span>
-                <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ color: '#64748b', fontWeight: 700 }}>Fuel Cost (Rs. {fmt(calc.manualFuelCost)})</span>
+                <span style={{ fontWeight: 800, color: 'var(--text-dark)' }}>Manual Logs</span>
               </div>
-              {calc.fuelEntries.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.4rem' }}>
-                  {calc.fuelEntries.map((exp) => (
-                    <motion.div 
-                      initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
-                      key={exp.id} 
-                      style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
-                    >
-                      <span style={{ fontStyle: 'italic' }}>{exp.title || 'Untitled'} Amount</span>
-                      <span style={{ fontWeight: 600 }}>{fmt(exp.price)} PKR</span>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.25rem' }}>
+                {calc.fuelEntries.map((exp) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+                    key={exp.id} 
+                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
+                  >
+                    <span style={{ fontStyle: 'italic' }}>{exp.title || 'Fuel Refill'}:</span>
+                    <span style={{ fontWeight: 600 }}>{fmt(exp.price)}</span>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           )}
           
