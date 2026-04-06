@@ -239,12 +239,13 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
     
     return {
       fuelCost: totalFuelCost,
+      manualFuelCost,
       totalTolls,
       totalHotels,
       totalFood,
       totalExtra,
       grandTotal,
-      perPerson,
+      perPerson: totalExtra > 0 || totalTolls > 0 || totalHotels > 0 || totalFood > 0 ? (estimatedFuelCost + totalTolls + totalHotels + totalFood + totalExtra) / numPersons : perPerson,
       liters: totalLiters,
       totalNights
     };
@@ -868,22 +869,30 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Fuel Cost:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Toll Price:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(calc.totalTolls)} PKR</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Hotel Cost:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(calc.totalHotels)} PKR</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Food Cost:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
-          </div>
+          {calc.manualFuelCost > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748b' }}>Fuel Cost:</span>
+              <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
+            </div>
+          )}
+          {calc.totalTolls > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748b' }}>Toll Price:</span>
+              <span style={{ fontWeight: 600 }}>{fmt(calc.totalTolls)} PKR</span>
+            </div>
+          )}
+          {calc.totalHotels > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748b' }}>Hotel Cost:</span>
+              <span style={{ fontWeight: 600 }}>{fmt(calc.totalHotels)} PKR</span>
+            </div>
+          )}
+          {calc.totalFood > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748b' }}>Food Cost:</span>
+              <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
+            </div>
+          )}
           <div style={{ paddingTop: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
               <span style={{ color: '#64748b', fontWeight: 700 }}>Extra Log Cost:</span>
