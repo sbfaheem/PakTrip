@@ -208,8 +208,8 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
     
     // Manual fuel entries detection
     const manualFuelCost = fuelEntries.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
-    const totalFuelCost = estimatedFuelCost + manualFuelCost;
-    const totalLiters = totalFuelCost / petrolPrice;
+    const totalFuelCost = manualFuelCost; 
+    const totalLiters = manualFuelCost / petrolPrice;
 
     const totalTolls = tollLogs.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
     
@@ -242,6 +242,8 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
     return {
       fuelCost: totalFuelCost,
       manualFuelCost,
+      liters: totalLiters,
+      manualLiters: manualFuelCost / petrolPrice,
       totalTolls,
       totalHotels,
       totalFood,
@@ -429,7 +431,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                 Est. Fuel: <span style={{ fontWeight: 800 }}>{fmt(calc.fuelCost)} PKR</span>
               </p>
               <p style={{ fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 800 }}>{calc.liters.toFixed(1)}</span> Liters Required
+                <span style={{ fontWeight: 800 }}>{calc.liters.toFixed(1)}</span> Liters Total
               </p>
             </div>
             <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.5rem' }}>
@@ -487,7 +489,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.5rem' }}>
         <MetricCard icon={Hotel} label="Accommodation" value={`${fmt(calc.totalHotels)}`} sub={`${calc.totalNights} nights total`} color="#8b5cf6" disabled={!includeStay} />
         <MetricCard icon={Utensils} label="Food Cost" value={`${fmt(calc.totalFood)}`} sub={`${mealLogs.length} days logged`} color="#ec4899" disabled={!includeFood} />
-        <MetricCard icon={Fuel} label="Total Fuel" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)} Liters Total`} color="#10b981" />
+        <MetricCard icon={Fuel} label="TOTAL FUEL" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)} Liters Total`} color="#10b981" />
         <MetricCard icon={Receipt} label="Total Tolls" value={`${fmt(calc.totalTolls)}`} sub="Manual price" color="#3b82f6" />
       </div>
 
@@ -883,8 +885,14 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
           {(calc.fuelEntries.length > 0) && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>
-                <span style={{ color: '#1e293b', fontWeight: 700 }}>Fuel Cost (Rs. {fmt(calc.manualFuelCost)})</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: '0.6rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#1e293b', fontWeight: 700 }}>Fuel Cost (Rs. {fmt(calc.manualFuelCost)})</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }}>Refills Logged</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
+                  {calc.manualLiters.toFixed(1)} Liters Total
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #3b82f6', marginTop: '0.25rem' }}>
                 {calc.fuelEntries.map((exp, idx) => (
