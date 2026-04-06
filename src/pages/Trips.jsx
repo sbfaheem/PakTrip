@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Clock, CheckCircle, Navigation, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTrips } from '../context/TripContext';
+import { useNavigate } from 'react-router-dom';
 
-const TripCard = ({ name, status, date, region, image }) => {
+const TripCard = ({ name, status, date, region, image, onClick }) => {
   const getStatusColor = (s) => {
     switch (s) {
       case 'In Progress': return '#10b981';
@@ -14,7 +15,20 @@ const TripCard = ({ name, status, date, region, image }) => {
   };
 
   return (
-    <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+    <motion.div 
+      whileHover={status === 'In Progress' ? { scale: 1.02, y: -4 } : {}}
+      whileTap={status === 'In Progress' ? { scale: 0.98 } : {}}
+      onClick={onClick}
+      className="card" 
+      style={{ 
+        marginBottom: '1.5rem', 
+        display: 'flex', 
+        gap: '1rem', 
+        alignItems: 'center',
+        cursor: status === 'In Progress' ? 'pointer' : 'default',
+        transition: 'all 0.2s ease'
+      }}
+    >
       <div style={{ width: '80px', height: '80px', borderRadius: '16px', overflow: 'hidden', flexShrink: 0 }}>
         <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
@@ -30,7 +44,7 @@ const TripCard = ({ name, status, date, region, image }) => {
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{date}</div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -38,6 +52,13 @@ const Trips = () => {
   const { trips } = useTrips();
   const [activeTab, setActiveTab] = useState('All');
   const tabs = ['All', 'Upcoming', 'Completed'];
+  const navigate = useNavigate();
+
+  const handleTripClick = (trip) => {
+    if (trip.status === 'In Progress') {
+      navigate('/plan', { state: { destination: trip.name, autoStart: true } });
+    }
+  };
 
   const filteredTrips = trips.filter(trip => {
     if (activeTab === 'All') return true;
@@ -81,7 +102,7 @@ const Trips = () => {
         <div style={{ marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>Current & Upcoming</h3>
           {currentTrips.map(trip => (
-            <TripCard key={trip.id} {...trip} />
+            <TripCard key={trip.id} {...trip} onClick={() => handleTripClick(trip)} />
           ))}
         </div>
       )}
@@ -90,7 +111,7 @@ const Trips = () => {
         <div>
           <h3 style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>Past Journeys</h3>
           {pastTrips.map(trip => (
-            <TripCard key={trip.id} {...trip} />
+            <TripCard key={trip.id} {...trip} onClick={() => handleTripClick(trip)} />
           ))}
         </div>
       )}
