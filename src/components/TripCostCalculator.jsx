@@ -483,7 +483,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.5rem' }}>
         <MetricCard icon={Hotel} label="Accommodation" value={`${fmt(calc.totalHotels)}`} sub={`${calc.totalNights} nights total`} color="#8b5cf6" disabled={!includeStay} />
         <MetricCard icon={Utensils} label="Food Cost" value={`${fmt(calc.totalFood)}`} sub={`${mealLogs.length} days logged`} color="#ec4899" disabled={!includeFood} />
-        <MetricCard icon={Fuel} label="Estimated Fuel Price" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)} Liters Required`} color="#10b981" />
+        <MetricCard icon={Fuel} label="Total Fuel" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)} Liters Total`} color="#10b981" />
         <MetricCard icon={Receipt} label="Total Tolls" value={`${fmt(calc.totalTolls)}`} sub="Manual price" color="#3b82f6" />
       </div>
 
