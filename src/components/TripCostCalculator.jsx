@@ -195,18 +195,19 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
 
   const calc = useMemo(() => {
     if (distanceKm === 0) return {
-        fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0, totalExtra: 0
+        fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0, totalExtra: 0, fuelEntries: [], nonFuelEntries: []
     };
     
+    // Categorize Manual Expenses
+    const fuelEntries = extraExpenses.filter(e => e.title.toLowerCase().includes('fuel') || e.title.toLowerCase().includes('petrol'));
+    const nonFuelEntries = extraExpenses.filter(e => !e.title.toLowerCase().includes('fuel') && !e.title.toLowerCase().includes('petrol'));
+
     // Transport Costs (Calculated Fuel)
     const estimatedLiters = dist / fuelAvg;
     const estimatedFuelCost = estimatedLiters * petrolPrice;
     
     // Manual fuel entries detection
-    const manualFuelCost = extraExpenses
-      .filter(e => e.title.toLowerCase().includes('fuel') || e.title.toLowerCase().includes('petrol'))
-      .reduce((sum, e) => sum + (Number(e.price) || 0), 0);
-
+    const manualFuelCost = fuelEntries.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
     const totalFuelCost = estimatedFuelCost + manualFuelCost;
     const totalLiters = totalFuelCost / petrolPrice;
 
@@ -232,9 +233,10 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       });
     }
 
-    const totalExtra = extraExpenses.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
+    // Extra logs cost (non-fuel only)
+    const totalExtra = nonFuelEntries.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
     
-    const grandTotal = estimatedFuelCost + totalTolls + totalHotels + totalFood + totalExtra;
+    const grandTotal = totalFuelCost + totalTolls + totalHotels + totalFood + totalExtra;
     const perPerson = numPersons > 0 ? grandTotal / numPersons : grandTotal;
     
     return {
@@ -245,9 +247,11 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       totalFood,
       totalExtra,
       grandTotal,
-      perPerson: totalExtra > 0 || totalTolls > 0 || totalHotels > 0 || totalFood > 0 ? (estimatedFuelCost + totalTolls + totalHotels + totalFood + totalExtra) / numPersons : perPerson,
+      perPerson,
       liters: totalLiters,
-      totalNights
+      totalNights,
+      fuelEntries,
+      nonFuelEntries
     };
   }, [dist, fuelAvg, petrolPrice, tollLogs, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm, extraExpenses]);
 
@@ -877,12 +881,29 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
-          {calc.manualFuelCost > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#64748b' }}>Fuel Cost:</span>
-              <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
+          {(calc.fuelCost > 0) && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Fuel Cost:</span>
+                <span style={{ fontWeight: 600 }}>{fmt(calc.fuelCost)} PKR</span>
+              </div>
+              {calc.fuelEntries.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.4rem' }}>
+                  {calc.fuelEntries.map((exp) => (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+                      key={exp.id} 
+                      style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
+                    >
+                      <span style={{ fontStyle: 'italic' }}>{exp.title || 'Untitled'} Amount</span>
+                      <span style={{ fontWeight: 600 }}>{fmt(exp.price)} PKR</span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+          
           {calc.totalTolls > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748b' }}>Toll Price:</span>
@@ -901,21 +922,22 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
               <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
             </div>
           )}
+          
           <div style={{ paddingTop: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
               <span style={{ color: '#64748b', fontWeight: 700 }}>Extra Log Cost:</span>
               <span style={{ fontWeight: 800, color: 'var(--text-dark)' }}>{fmt(calc.totalExtra)} PKR</span>
             </div>
             
-            {extraExpenses.length > 0 && (
+            {calc.nonFuelEntries.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.25rem' }}>
-                {extraExpenses.map((exp, idx) => (
+                {calc.nonFuelEntries.map((exp) => (
                   <motion.div 
                     initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
                     key={exp.id} 
                     style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
                   >
-                    <span>{exp.title || 'Untitled'} amount</span>
+                    <span>{exp.title || 'Untitled'} Amount</span>
                     <span style={{ fontWeight: 600 }}>{fmt(exp.price)} PKR</span>
                   </motion.div>
                 ))}
