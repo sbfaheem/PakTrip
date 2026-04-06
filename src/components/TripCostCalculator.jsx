@@ -198,9 +198,18 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0, totalExtra: 0
     };
     
-    // Transport Costs (Fuel)
-    const liters = Number((dist / fuelAvg).toFixed(1));
-    const fuelCost = liters * petrolPrice;
+    // Transport Costs (Calculated Fuel)
+    const estimatedLiters = dist / fuelAvg;
+    const estimatedFuelCost = estimatedLiters * petrolPrice;
+    
+    // Manual fuel entries detection
+    const manualFuelCost = extraExpenses
+      .filter(e => e.title.toLowerCase().includes('fuel') || e.title.toLowerCase().includes('petrol'))
+      .reduce((sum, e) => sum + (Number(e.price) || 0), 0);
+
+    const totalFuelCost = estimatedFuelCost + manualFuelCost;
+    const totalLiters = totalFuelCost / petrolPrice;
+
     const totalTolls = tollLogs.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
     
     // Accommodation Costs (Multi-stay summation)
@@ -225,18 +234,18 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
 
     const totalExtra = extraExpenses.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
     
-    const grandTotal = fuelCost + totalTolls + totalHotels + totalFood + totalExtra;
+    const grandTotal = estimatedFuelCost + totalTolls + totalHotels + totalFood + totalExtra;
     const perPerson = numPersons > 0 ? grandTotal / numPersons : grandTotal;
     
     return {
-      fuelCost,
+      fuelCost: totalFuelCost,
       totalTolls,
       totalHotels,
       totalFood,
       totalExtra,
       grandTotal,
       perPerson,
-      liters,
+      liters: totalLiters,
       totalNights
     };
   }, [dist, fuelAvg, petrolPrice, tollLogs, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm, extraExpenses]);
@@ -875,9 +884,26 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
             <span style={{ color: '#64748b' }}>Food Cost:</span>
             <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Extra Log Cost:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(calc.totalExtra)} PKR</span>
+          <div style={{ paddingTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+              <span style={{ color: '#64748b', fontWeight: 700 }}>Extra Log Cost:</span>
+              <span style={{ fontWeight: 800, color: 'var(--text-dark)' }}>{fmt(calc.totalExtra)} PKR</span>
+            </div>
+            
+            {extraExpenses.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.25rem' }}>
+                {extraExpenses.map((exp, idx) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+                    key={exp.id} 
+                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
+                  >
+                    <span>{exp.title || 'Untitled'} amount</span>
+                    <span style={{ fontWeight: 600 }}>{fmt(exp.price)} PKR</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.75rem', marginTop: '0.25rem', borderTop: '2px solid #e2e8f0' }}>
