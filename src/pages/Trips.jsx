@@ -96,10 +96,40 @@ const Trips = () => {
       )}
 
       {filteredTrips.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
-          <p>
-            {activeTab === 'All' ? 'No trips found.' : `No ${activeTab.toLowerCase()} trips found.`}
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '6rem 2rem', 
+          background: 'white', 
+          borderRadius: '2.5rem',
+          border: '2px dashed #f1f5f9'
+        }}>
+          <div style={{ 
+            width: '64px', height: '64px', borderRadius: '50%', background: '#f0fdf4', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
+            color: 'var(--primary)'
+          }}>
+            <Navigation size={32} />
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-dark)', marginBottom: '0.5rem' }}>
+            No Adventures Yet
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.925rem', marginBottom: '2rem', maxWidth: '240px', margin: '0 auto 2rem', lineHeight: 1.5 }}>
+            {activeTab === 'All' 
+              ? "Your legendary travel logs will appear here once you start your first journey." 
+              : `You don't have any ${activeTab.toLowerCase()} trips at the moment.`}
           </p>
+          {activeTab === 'All' && (
+            <button 
+              onClick={() => window.location.href = '/plan'}
+              style={{ 
+                padding: '0.875rem 1.75rem', borderRadius: '1rem', background: 'var(--primary)', 
+                color: 'white', border: 'none', fontWeight: 700, fontSize: '0.925rem', cursor: 'pointer',
+                boxShadow: '0 10px 15px -3px rgba(5, 150, 105, 0.3)'
+              }}
+            >
+              Plan Your First Trip
+            </button>
+          )}
         </div>
       )}
     </motion.div>

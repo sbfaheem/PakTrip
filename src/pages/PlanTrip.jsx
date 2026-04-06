@@ -303,6 +303,21 @@ const PlanTrip = () => {
 
     setIsLive(true);
     
+    // Add trip to context if not already present
+    const destinationName = (to || 'Unknown Trip').split(',')[0];
+    const existingTrip = trips.find(t => t.name === destinationName && t.status === 'In Progress');
+    
+    if (!existingTrip) {
+      addTrip({
+        name: destinationName,
+        status: 'In Progress',
+        region: (to || '').split(',').slice(-2, -1)[0]?.trim() || 'Pakistan',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        distance: parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) || 0,
+        image: bannerImage
+      });
+    }
+
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, speed } = position.coords;
