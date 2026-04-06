@@ -427,7 +427,7 @@ const PlanTrip = () => {
   const onFromPlaceChanged = () => {
     if (fromAutocompleteRef.current !== null) {
       const place = fromAutocompleteRef.current.getPlace();
-      if (place.formatted_address) {
+      if (place && place.formatted_address) {
         setFrom(place.formatted_address);
       }
     }
@@ -436,7 +436,7 @@ const PlanTrip = () => {
   const onToPlaceChanged = () => {
     if (toAutocompleteRef.current !== null) {
       const place = toAutocompleteRef.current.getPlace();
-      if (place.formatted_address) {
+      if (place && place.formatted_address) {
         setTo(place.formatted_address);
         if (place.photos && place.photos.length > 0) {
           setBannerImage(place.photos[0].getUrl({ maxWidth: 2000 }));

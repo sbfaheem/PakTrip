@@ -415,13 +415,21 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', opacity: 0.8 }}>
               <Wallet size={16} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Trip Budget (PKR)</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Estimated Trip Budget</span>
             </div>
             <div style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
               {fmt(calc.grandTotal)}
             </div>
-            <p style={{ fontSize: '0.85rem', opacity: 0.8, marginTop: '0.75rem' }}>
-              Cost per person: <span style={{ fontWeight: 800 }}>{fmt(calc.perPerson)}</span> (for {numPersons})
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', opacity: 0.9 }}>
+              <p style={{ fontSize: '0.85rem' }}>
+                Est. Fuel: <span style={{ fontWeight: 800 }}>{fmt(calc.fuelCost)} PKR</span>
+              </p>
+              <p style={{ fontSize: '0.85rem' }}>
+                <span style={{ fontWeight: 800 }}>{calc.liters.toFixed(1)}</span> Liters Required
+              </p>
+            </div>
+            <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.5rem' }}>
+              Cost per person: <span style={{ fontWeight: 700 }}>{fmt(calc.perPerson)}</span> (for {numPersons})
             </p>
           </div>
           {includeStay && (
@@ -475,7 +483,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1.5rem' }}>
         <MetricCard icon={Hotel} label="Accommodation" value={`${fmt(calc.totalHotels)}`} sub={`${calc.totalNights} nights total`} color="#8b5cf6" disabled={!includeStay} />
         <MetricCard icon={Utensils} label="Food Cost" value={`${fmt(calc.totalFood)}`} sub={`${mealLogs.length} days logged`} color="#ec4899" disabled={!includeFood} />
-        <MetricCard icon={Fuel} label="Total Fuel" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)}L total`} color="#10b981" />
+        <MetricCard icon={Fuel} label="Estimated Fuel Price" value={`${fmt(calc.fuelCost)}`} sub={`${calc.liters.toFixed(1)} Liters Required`} color="#10b981" />
         <MetricCard icon={Receipt} label="Total Tolls" value={`${fmt(calc.totalTolls)}`} sub="Manual price" color="#3b82f6" />
       </div>
 
