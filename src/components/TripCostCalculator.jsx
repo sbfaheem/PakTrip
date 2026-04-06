@@ -124,6 +124,12 @@ const initialTollLog = (id) => ({
   price: 0
 });
 
+const initialExtraExpense = (id) => ({
+  id,
+  title: '',
+  price: 0
+});
+
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip, setRoundTrip, onUpdate }) {
   const { notifSettings, updateNotifSettings } = useTrips();
@@ -131,6 +137,11 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
   const [tollLogs, setTollLogs] = useState(() => {
     const saved = localStorage.getItem('paktrip_toll_logs');
     return saved ? JSON.parse(saved) : [initialTollLog(Date.now())];
+  });
+
+  const [extraExpenses, setExtraExpenses] = useState(() => {
+    const saved = localStorage.getItem('paktrip_extra_expenses');
+    return saved ? JSON.parse(saved) : [];
   });
   
   // 2. Intercity Trip Flow / Hotel (Enhanced Multi-Stay)
@@ -178,10 +189,13 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
   useEffect(() => {
     localStorage.setItem('paktrip_toll_logs', JSON.stringify(tollLogs));
   }, [tollLogs]);
+  useEffect(() => {
+    localStorage.setItem('paktrip_extra_expenses', JSON.stringify(extraExpenses));
+  }, [extraExpenses]);
 
   const calc = useMemo(() => {
     if (distanceKm === 0) return {
-        fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0
+        fuelCost: 0, totalTolls: 0, totalHotels: 0, totalFood: 0, grandTotal: 0, perPerson: 0, liters: 0, totalNights: 0, totalExtra: 0
     };
     
     // Transport Costs (Fuel)
@@ -208,8 +222,10 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         if (day.dinner.included) totalFood += Number(day.dinner.price);
       });
     }
+
+    const totalExtra = extraExpenses.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
     
-    const grandTotal = fuelCost + totalTolls + totalHotels + totalFood;
+    const grandTotal = fuelCost + totalTolls + totalHotels + totalFood + totalExtra;
     const perPerson = numPersons > 0 ? grandTotal / numPersons : grandTotal;
     
     return {
@@ -217,12 +233,13 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
       totalTolls,
       totalHotels,
       totalFood,
+      totalExtra,
       grandTotal,
       perPerson,
       liters,
       totalNights
     };
-  }, [dist, fuelAvg, petrolPrice, tollLogs, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm]);
+  }, [dist, fuelAvg, petrolPrice, tollLogs, includeStay, hotelLogs, includeFood, mealLogs, numPersons, distanceKm, extraExpenses]);
 
   // Sync to parent for notifications
   useEffect(() => {
@@ -234,6 +251,7 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         totalTolls: Math.round(calc.totalTolls || 0),
         totalHotels: Math.round(calc.totalHotels || 0),
         totalFood: Math.round(calc.totalFood || 0),
+        totalExtra: Math.round(calc.totalExtra || 0),
         grandTotal: Math.round(calc.grandTotal || 0),
         perPerson: Math.round(calc.perPerson || 0)
       };
@@ -289,6 +307,20 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         return { ...t, [field]: val };
       }
       return t;
+    }));
+  };
+
+  // Extra Expense Actions
+  const addExtraLine = () => setExtraExpenses([...extraExpenses, initialExtraExpense(Date.now())]);
+  const removeExtraLine = (id) => setExtraExpenses(extraExpenses.filter(e => e.id !== id));
+  const updateExtraLine = (id, field, value) => {
+    setExtraExpenses(extraExpenses.map(e => {
+      if (e.id === id) {
+        let val = value;
+        if (field === 'price') val = value.replace(/[^0-9]/g, '') === '' ? 0 : Number(value.replace(/[^0-9]/g, ''));
+        return { ...e, [field]: val };
+      }
+      return e;
     }));
   };
 
@@ -414,6 +446,12 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
                 Tolls {calc.grandTotal > 0 ? Math.round((calc.totalTolls / calc.grandTotal) * 100) : 0}%
+             </div>
+           )}
+           {calc.totalExtra > 0 && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+                Misc {calc.grandTotal > 0 ? Math.round((calc.totalExtra / calc.grandTotal) * 100) : 0}%
              </div>
            )}
         </div>
@@ -712,49 +750,101 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
                      <Slider label="Petrol Price" value={petrolPrice} min={250} max={450} step={0.01} unit="PKR/L" onChange={setPetrolPrice} color="#3b82f6" />
                    </div>
                 </div>
-                 <div style={{ height: '1px', background: '#f1f5f9' }} />
 
-                 {/* 5. Notification & Monitoring Section */}
-                 <div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>🔔 Monitoring & Alerts</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                       <label>
-                         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Notification Email</span>
-                         <input 
-                           type="email" placeholder="your@email.com"
-                           value={notifSettings.email} 
-                           onChange={e => updateNotifSettings({ email: e.target.value })}
-                           style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
-                         />
-                       </label>
+                <div style={{ height: '1px', background: '#f1f5f9' }} />
 
-                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                           <input 
-                             type="checkbox" 
-                             checked={notifSettings.enableRouteAlerts}
-                             onChange={e => updateNotifSettings({ enableRouteAlerts: e.target.checked })}
-                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
-                           />
-                           <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Email update on Route Change</span>
-                         </label>
+                {/* 5. Trip Expense Log Section */}
+                <div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>📝 Trip Expense Log</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                         <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 600 }}>Total Extra:</span>
+                         <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', background: '#ecfdf5', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
+                            Rs. {fmt(calc.totalExtra)}
+                         </span>
+                      </div>
+                   </div>
+                   
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                      {extraExpenses.map((expense) => (
+                         <div key={expense.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 40px', gap: '0.5rem', alignItems: 'center' }}>
+                            <input 
+                              type="text" placeholder="e.g. Fuel Refill, Snacks"
+                              value={expense.title} onChange={e => updateExtraLine(expense.id, 'title', e.target.value)}
+                              style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', fontWeight: 600 }}
+                            />
+                            <input 
+                              type="text" inputMode="numeric" placeholder="Cost"
+                              value={expense.price || ''} onChange={e => updateExtraLine(expense.id, 'price', e.target.value)}
+                              style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', fontWeight: 700, textAlign: 'right' }}
+                            />
+                            <button 
+                              onClick={() => removeExtraLine(expense.id)}
+                              style={{ padding: '0.65rem', border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                         </div>
+                      ))}
+                      
+                      {extraExpenses.length === 0 && (
+                         <div style={{ padding: '1.25rem', border: '2px dashed #f1f5f9', borderRadius: '12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
+                            No manual expenses logged yet.
+                         </div>
+                      )}
 
-                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                           <input 
-                             type="checkbox" 
-                             checked={notifSettings.enablePeriodicUpdates}
-                             onChange={e => updateNotifSettings({ enablePeriodicUpdates: e.target.checked })}
-                             style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
-                           />
-                           <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Periodic updates (Every 6h)</span>
-                         </label>
-                       </div>
-                       
-                       <p style={{ fontSize: '0.65rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                         * Emails are sent via EmailJS. Note that periodic updates require the app to be open in your browser.
-                       </p>
-                    </div>
-                 </div>
+                      <button 
+                        onClick={addExtraLine}
+                        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', border: 'none', padding: '0.6rem 1rem', borderRadius: '10px', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                         <Plus size={14} /> Add Actual Expense
+                      </button>
+                   </div>
+                </div>
+
+                <div style={{ height: '1px', background: '#f1f5f9' }} />
+
+                {/* 6. Notification & Monitoring Section */}
+                <div>
+                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', fontWeight: 700, textTransform: 'uppercase' }}>🔔 Monitoring & Alerts</p>
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <label>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Notification Email</span>
+                        <input 
+                          type="email" placeholder="your@email.com"
+                          value={notifSettings.email} 
+                          onChange={e => updateNotifSettings({ email: e.target.value })}
+                          style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                      </label>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={notifSettings.enableRouteAlerts}
+                            onChange={e => updateNotifSettings({ enableRouteAlerts: e.target.checked })}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                          />
+                          <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Email update on Route Change</span>
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={notifSettings.enablePeriodicUpdates}
+                            onChange={e => updateNotifSettings({ enablePeriodicUpdates: e.target.checked })}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                          />
+                          <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Periodic updates (Every 6h)</span>
+                        </label>
+                      </div>
+                      
+                      <p style={{ fontSize: '0.65rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                        * Emails are sent via EmailJS. Note that periodic updates require the app to be open in your browser.
+                      </p>
+                   </div>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -784,6 +874,10 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: '#64748b' }}>Food Cost:</span>
             <span style={{ fontWeight: 600 }}>{fmt(calc.totalFood)} PKR</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748b' }}>Extra Log Cost:</span>
+            <span style={{ fontWeight: 600 }}>{fmt(calc.totalExtra)} PKR</span>
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.75rem', marginTop: '0.25rem', borderTop: '2px solid #e2e8f0' }}>
