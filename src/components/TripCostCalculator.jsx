@@ -883,19 +883,18 @@ export default function TripCostCalculator({ distanceKm = 0, isLoaded, roundTrip
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.85rem' }}>
           {(calc.fuelEntries.length > 0) && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <span style={{ color: '#64748b', fontWeight: 700 }}>Fuel Cost (Rs. {fmt(calc.manualFuelCost)})</span>
-                <span style={{ fontWeight: 800, color: 'var(--text-dark)' }}>Manual Logs</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.25rem' }}>
+                <span style={{ color: '#1e293b', fontWeight: 700 }}>Fuel Cost (Rs. {fmt(calc.manualFuelCost)})</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e2e8f0', marginTop: '0.25rem' }}>
-                {calc.fuelEntries.map((exp) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingLeft: '0.75rem', borderLeft: '2px solid #3b82f6', marginTop: '0.25rem' }}>
+                {calc.fuelEntries.map((exp, idx) => (
                   <motion.div 
                     initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
                     key={exp.id} 
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}
+                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}
                   >
-                    <span style={{ fontStyle: 'italic' }}>{exp.title || 'Fuel Refill'}:</span>
-                    <span style={{ fontWeight: 600 }}>{fmt(exp.price)}</span>
+                    <span style={{ color: '#64748b' }}>{idx + 1}. {exp.title || 'Fuel Refill'}:</span>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>{fmt(exp.price)}</span>
                   </motion.div>
                 ))}
               </div>
