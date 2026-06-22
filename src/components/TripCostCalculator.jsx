@@ -48,33 +48,181 @@ function Checkbox({ label, checked, onChange, icon: Icon, color }) {
 
 function Slider({ label, value, min, max, step, unit, onChange, color = 'var(--primary)', disabled }) {
   const pct = ((value - min) / (max - min)) * 100;
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value.toString());
+
+  useEffect(() => {
+    if (!isEditing) {
+      setInputValue(value.toString());
+    }
+  }, [value, isEditing]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    let val = Number(inputValue);
+    if (isNaN(val)) val = value;
+    val = Math.max(min, Math.min(max, val));
+    const decimals = step === 0.01 ? 2 : (step === 0.5 ? 1 : 0);
+    val = Number(val.toFixed(decimals));
+    onChange(val);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    }
+  };
+
+  const handleDecrement = () => {
+    if (disabled) return;
+    const change = step === 0.01 ? 1.0 : step;
+    const newValue = Math.max(min, Math.min(max, value - change));
+    const decimals = step === 0.01 ? 2 : (step === 0.5 ? 1 : 0);
+    onChange(Number(newValue.toFixed(decimals)));
+  };
+
+  const handleIncrement = () => {
+    if (disabled) return;
+    const change = step === 0.01 ? 1.0 : step;
+    const newValue = Math.max(min, Math.min(max, value + change));
+    const decimals = step === 0.01 ? 2 : (step === 0.5 ? 1 : 0);
+    onChange(Number(newValue.toFixed(decimals)));
+  };
+
   return (
     <div style={{ marginBottom: '1.25rem', opacity: disabled ? 0.4 : 1, transition: 'opacity 0.2s' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
-        <span style={{ fontSize: '1rem', fontWeight: 700, color }}>{value.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>{unit}</span></span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
+        {isEditing ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="number"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              step={step}
+              min={min}
+              max={max}
+              style={{
+                width: '75px',
+                border: `1px solid ${color}`,
+                borderRadius: '6px',
+                padding: '2px 6px',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                color: 'var(--text-dark)',
+                textAlign: 'right',
+                outline: 'none'
+              }}
+            />
+            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>{unit}</span>
+          </div>
+        ) : (
+          <span 
+            onClick={() => !disabled && setIsEditing(true)}
+            style={{ 
+              fontSize: '1rem', 
+              fontWeight: 700, 
+              color, 
+              cursor: disabled ? 'default' : 'pointer',
+              borderBottom: disabled ? 'none' : '1px dashed #cbd5e1',
+              paddingBottom: '1px'
+            }}
+            title="Click to edit value"
+          >
+            {value.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>{unit}</span>
+          </span>
+        )}
       </div>
-      <div style={{ position: 'relative', height: '6px', background: '#e5e7eb', borderRadius: '3px' }}>
-        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: color, borderRadius: '3px', transition: 'width 0.1s' }} />
-        <input
-          type="range" min={min} max={max} step={step} value={value}
-          onChange={e => !disabled && onChange(Number(e.target.value))}
-          disabled={disabled}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <button
+          onClick={handleDecrement}
+          disabled={disabled || value <= min}
+          type="button"
           style={{
-            position: 'absolute', inset: 0, width: '100%', opacity: 0,
-            cursor: disabled ? 'default' : 'pointer', height: '100%', margin: 0
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            border: '1px solid #e2e8f0',
+            background: '#fff',
+            color: '#475569',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            cursor: disabled || value <= min ? 'default' : 'pointer',
+            opacity: disabled || value <= min ? 0.4 : 1,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            padding: 0,
+            transition: 'all 0.15s'
           }}
-        />
-        <div style={{
-          position: 'absolute', top: '50%', left: `${pct}%`,
-          transform: 'translate(-50%, -50%)',
-          width: '18px', height: '18px', borderRadius: '50%',
-          background: '#fff', border: `3px solid ${color}`,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-          pointerEvents: 'none', transition: 'left 0.1s'
-        }} />
+        >
+          -
+        </button>
+
+        <div style={{ flex: 1, position: 'relative', height: '24px', display: 'flex', alignItems: 'center' }}>
+          {/* Visible track background */}
+          <div style={{ width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', position: 'relative' }}>
+            {/* Active track color fill */}
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: color, borderRadius: '3px', transition: 'width 0.1s' }} />
+            {/* Styled thumb representation */}
+            <div style={{
+              position: 'absolute', top: '50%', left: `${pct}%`,
+              transform: 'translate(-50%, -50%)',
+              width: '18px', height: '18px', borderRadius: '50%',
+              background: '#fff', border: `3px solid ${color}`,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+              pointerEvents: 'none', transition: 'left 0.1s'
+            }} />
+          </div>
+          {/* Actual range input covering the 24px height container */}
+          <input
+            type="range" min={min} max={max} step={step} value={value}
+            onChange={e => !disabled && onChange(Number(e.target.value))}
+            disabled={disabled}
+            style={{
+              position: 'absolute', inset: 0, width: '100%', opacity: 0,
+              cursor: disabled ? 'default' : 'pointer', height: '100%', margin: 0
+            }}
+          />
+        </div>
+
+        <button
+          onClick={handleIncrement}
+          disabled={disabled || value >= max}
+          type="button"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            border: '1px solid #e2e8f0',
+            background: '#fff',
+            color: '#475569',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            cursor: disabled || value >= max ? 'default' : 'pointer',
+            opacity: disabled || value >= max ? 0.4 : 1,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            padding: 0,
+            transition: 'all 0.15s'
+          }}
+        >
+          +
+        </button>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#9ca3af' }}>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.7rem', color: '#9ca3af', padding: '0 32px' }}>
         <span>{min.toLocaleString()}</span><span>{max.toLocaleString()}</span>
       </div>
     </div>
