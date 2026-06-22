@@ -495,6 +495,11 @@ const PlanTrip = () => {
   };
 
   const currentDistanceValue = parseFloat(routeData.distance.replace(/[^0-9.]/g, '')) || 1;
+  const currentFuelAvg = fullBudgetData?.fuelAvg || 12;
+  const currentPetrolPrice = fullBudgetData?.petrolPrice || routeData.petrolPrice;
+  const tripDistance = currentDistanceValue * (roundTrip ? 2 : 1);
+  const calculatedFuelNeed = currentFuelAvg > 0 ? (tripDistance / currentFuelAvg) : 0;
+
   const progressPercent = Math.min((currentKm / currentDistanceValue) * 100, 100);
 
   if (loadError) {
@@ -643,10 +648,10 @@ const PlanTrip = () => {
             <div>
               <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Fuel Need</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-dark)' }}>
-                {(Number(routeData.fuelNeed) * (roundTrip ? 2 : 1)).toFixed(1)} Liters
+                {calculatedFuelNeed.toFixed(1)} Liters
               </div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', margin: '2px 0' }}>Rs. {routeData.petrolPrice} / Liter</div>
-              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on Average as 12 km/liter</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', margin: '2px 0' }}>Rs. {currentPetrolPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / Liter</div>
+              <div style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>Based on Average as {currentFuelAvg} km/liter</div>
             </div>
           </div>
           <div className="card" style={{ flex: 1, padding: '1.25rem', borderRadius: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
