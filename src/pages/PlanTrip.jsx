@@ -46,6 +46,14 @@ const PlanTrip = () => {
   const [decodedPath, setDecodedPath] = useState([]);
   const [milestones, setMilestones] = useState([]);
   const [currentLocation, setCurrentLocation] = useState(defaultCenter);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const [autoCenterEnabled, setAutoCenterEnabled] = useState(true);
+  const autoCenterRef = useRef(true);
+
+  const updateAutoCenter = (val) => {
+    setAutoCenterEnabled(val);
+    autoCenterRef.current = val;
+  };
   const [currentKm, setCurrentKm] = useState(0);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [notification, setNotification] = useState({ message: '', visible: false });
@@ -106,7 +114,10 @@ const PlanTrip = () => {
         if (window.google.maps.geometry) {
            const path = window.google.maps.geometry.encoding.decodePath(result.routes[0].overview_polyline);
            setDecodedPath(path);
-           setCurrentLocation({ lat: path[0].lat(), lng: path[0].lng() });
+           const startPos = { lat: path[0].lat(), lng: path[0].lng() };
+           setCurrentLocation(startPos);
+           setMapCenter(startPos);
+           updateAutoCenter(true);
         }
 
         // Extract milestones from all legs
@@ -193,7 +204,10 @@ const PlanTrip = () => {
               if (response?.results?.[0]) {
                 const address = response.results[0].formatted_address;
                 setFrom(address);
-                setCurrentLocation({ lat: latitude, lng: longitude });
+                const startPos = { lat: latitude, lng: longitude };
+                setCurrentLocation(startPos);
+                setMapCenter(startPos);
+                updateAutoCenter(true);
               }
             } catch (err) {
               console.error("Geocoding failed:", err);
@@ -291,7 +305,6 @@ const PlanTrip = () => {
   // Live Geolocation Tracking
   const toggleLiveTracking = () => {
     if (isLive) {
-      if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
       setIsLive(false);
       return;
     }
@@ -302,6 +315,7 @@ const PlanTrip = () => {
     }
 
     setIsLive(true);
+    updateAutoCenter(true);
     
     // Add trip to context if not already present
     const destinationName = (to || 'Unknown Trip').split(',')[0];
@@ -317,12 +331,27 @@ const PlanTrip = () => {
         image: bannerImage
       });
     }
+  };
+
+  // Geolocation watch effect responding dynamically to state updates
+  useEffect(() => {
+    if (!isLive) {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+      return;
+    }
 
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, speed } = position.coords;
         const newPos = { lat: latitude, lng: longitude };
         setCurrentLocation(newPos);
+        
+        if (autoCenterRef.current) {
+          setMapCenter(newPos);
+        }
         
         // Update speed (convert m/s to km/h)
         if (speed !== null && speed !== undefined) {
@@ -335,14 +364,24 @@ const PlanTrip = () => {
         if (decodedPath.length > 0 && window.google && window.google.maps && window.google.maps.geometry) {
            const totalKm = parseFloat(routeData.distance.toString().replace(/[^0-9.]/g, '')) || 100;
            
-           // Find distance from origin to current point (simplified)
-           const originPos = decodedPath[0];
-           const distanceInMeters = window.google.maps.geometry.spherical.computeDistanceBetween(
-             new window.google.maps.LatLng(originPos.lat(), originPos.lng()),
-             new window.google.maps.LatLng(latitude, longitude)
-           );
+           // Find the closest point in decodedPath to project location onto the route
+           let closestIndex = 0;
+           let minDistance = Infinity;
            
-           const coveredKm = distanceInMeters / 1000;
+           for (let i = 0; i < decodedPath.length; i++) {
+             const pt = decodedPath[i];
+             const dist = window.google.maps.geometry.spherical.computeDistanceBetween(
+               new window.google.maps.LatLng(latitude, longitude),
+               new window.google.maps.LatLng(pt.lat(), pt.lng())
+             );
+             if (dist < minDistance) {
+               minDistance = dist;
+               closestIndex = i;
+             }
+           }
+           
+           // Calculate distance along the route
+           const coveredKm = (closestIndex / Math.max(1, decodedPath.length - 1)) * totalKm;
            setCurrentKm(coveredKm);
 
            // Track next milestone distance
@@ -353,7 +392,11 @@ const PlanTrip = () => {
               m => coveredKm >= m.km && coveredKm <= m.km + 5 && m.name !== lastNotifiedMilestone
            );
            if (currentMilestone) {
-              setNotification({ message: `We have arrived ${currentMilestone.name}`, visible: true, nextStop: nextMilestone ? { name: nextMilestone.name, dist: distToNext } : null });
+              setNotification({ 
+                message: `We have arrived ${currentMilestone.name}`, 
+                visible: true, 
+                nextStop: nextMilestone ? { name: nextMilestone.name, dist: distToNext } : null 
+              });
               setLastNotifiedMilestone(currentMilestone.name);
               setTimeout(() => setNotification(curr => ({ ...curr, visible: false })), 4000);
            }
@@ -361,19 +404,23 @@ const PlanTrip = () => {
       },
       (error) => {
         console.error("Geolocation error:", error);
+        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
+          console.warn("GPS signal lost or timeout - trying to re-acquire...");
+          return;
+        }
         setIsLive(false);
-        alert("Unable to retrieve your location. Check your permissions.");
+        alert(`Unable to retrieve your location: ${error.message}. Please check your permissions.`);
       },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
-  };
 
-  // Cleanup geolocation on unmount
-  useEffect(() => {
     return () => {
-      if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
     };
-  }, []);
+  }, [isLive, decodedPath, milestones, lastNotifiedMilestone, routeData]);
 
   const addStop = () => {
     setStops([...stops, { id: Math.random().toString(36).substr(2, 9), address: '' }]);
@@ -687,10 +734,60 @@ const PlanTrip = () => {
 
         <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
           {isLoaded ? (
-            <GoogleMap mapContainerStyle={containerStyle} center={currentLocation} zoom={16} options={{ disableDefaultUI: true }}>
-              {directionsResponse && <DirectionsRenderer directions={directionsResponse} options={{ preserveViewport: true, polylineOptions: { strokeColor: "#059669", strokeWeight: 6, strokeOpacity: 0.8 }, markerOptions: { visible: true }}} />}
-              {isLive && <Marker position={currentLocation} icon={{ path: window.google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#3b82f6', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }} />}
-            </GoogleMap>
+            <>
+              <GoogleMap 
+                mapContainerStyle={containerStyle} 
+                center={mapCenter} 
+                zoom={16} 
+                options={{ disableDefaultUI: true }}
+                onDragStart={() => updateAutoCenter(false)}
+              >
+                {directionsResponse && <DirectionsRenderer directions={directionsResponse} options={{ preserveViewport: true, polylineOptions: { strokeColor: "#059669", strokeWeight: 6, strokeOpacity: 0.8 }, markerOptions: { visible: true }}} />}
+                {isLive && (
+                  <Marker 
+                    position={currentLocation} 
+                    icon={{ 
+                      path: window.google.maps.SymbolPath.CIRCLE, 
+                      scale: 8, 
+                      fillColor: '#3b82f6', 
+                      fillOpacity: 1, 
+                      strokeColor: 'white', 
+                      strokeWeight: 2 
+                    }} 
+                  />
+                )}
+              </GoogleMap>
+              {isLive && !autoCenterEnabled && (
+                <button
+                  onClick={() => {
+                    setMapCenter(currentLocation);
+                    updateAutoCenter(true);
+                  }}
+                  type="button"
+                  style={{
+                    position: 'absolute',
+                    bottom: '16px',
+                    right: '16px',
+                    background: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#3b82f6',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 10,
+                    padding: 0
+                  }}
+                  title="Recenter map on current location"
+                >
+                  <LocateFixed size={20} />
+                </button>
+              )}
+            </>
           ) : (
             <div style={{ ...containerStyle, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={32} className="animate-spin" color="var(--primary)" /></div>
           )}
